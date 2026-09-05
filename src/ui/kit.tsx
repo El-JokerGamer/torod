@@ -199,14 +199,14 @@ export function Drawer({ open, onClose, children }: { open: boolean; onClose: ()
     return () => { window.removeEventListener('keydown', h); setScrollLock(false); };
   }, [open, onClose]);
   return (
-    <div className={`fixed inset-0 z-50 flex items-end md:items-start justify-start ${open ? '' : 'pointer-events-none'}`} aria-hidden={!open}>
+    <div className={`fixed inset-0 z-50 flex items-end md:items-start justify-end ${open ? '' : 'pointer-events-none'}`} aria-hidden={!open}>
       <div className={`absolute inset-0 bg-paper/85 transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0'}`} onClick={onClose} />
-      {/* هاتف: ورقة سفلية · كمبيوتر: لوحة من الأعلى بطول أقل من الشاشة بشيء بسيط */}
+      {/* هاتف: ورقة سفلية · كمبيوتر: لوحة إجراءات من جهة اليمين — نفس تصميم قوائم الإدخال */}
       <aside className={`relative w-full max-h-[92dvh] md:h-[93dvh] md:w-[84%] lg:w-[66%] xl:w-1/2 md:min-w-[560px] md:max-w-[980px] bg-paper flex flex-col overflow-hidden
-        rounded-t-2xl md:rounded-t-none md:rounded-b-2xl md:rounded-r-2xl md:ring-1 md:ring-ink/10
-        shadow-[0_-24px_70px_-24px_rgba(12,22,34,0.35)] md:shadow-[36px_24px_90px_-24px_rgba(12,22,34,0.4)]
+        rounded-t-2xl md:rounded-t-none md:rounded-b-2xl md:rounded-l-2xl md:ring-1 md:ring-ink/10
+        shadow-[0_-24px_70px_-24px_rgba(12,22,34,0.35)] md:shadow-[-24px_24px_80px_-24px_rgba(12,22,34,0.4)]
         transition-[transform,visibility] duration-300 ease-[cubic-bezier(.16,1,.3,1)]
-        ${open ? 'translate-y-0 md:translate-x-0 visible' : 'translate-y-full md:translate-y-0 md:-translate-x-full invisible'}`}>
+        ${open ? 'translate-y-0 md:translate-x-0 visible' : 'translate-y-full md:translate-y-0 md:translate-x-full invisible'}`}>
         <button onClick={onClose} className="md:hidden pt-2.5 pb-0.5 flex justify-center shrink-0" aria-label="إغلاق">
           <span className="w-10 h-1.5 rounded-full bg-slate-300" />
         </button>
