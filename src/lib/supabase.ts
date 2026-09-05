@@ -3,15 +3,32 @@ import { createClient } from '@supabase/supabase-js';
 import type { DB, User, Hub, Route, Order, Issue, Settlement, CourierPos } from './data';
 import { SEED_VERSION } from './data';
 
-const SUPABASE_URL = 'https://ncsufsacdzapfmfagron.supabase.co';
-const SUPABASE_ANON =
+// ── الإعدادات من ملف .env — عدّلها هناك بدون لمس الكود ──
+// القيم الاحتياطية تُستخدم فقط إذا لم يوجد ملف .env
+const FALLBACK_URL = 'https://ncsufsacdzapfmfagron.supabase.co';
+const FALLBACK_ANON =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jc3Vmc2FjZHphcGZtZmFncm9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5NDg0MzUsImV4cCI6MjEwMzUyNDQzNX0.SWiBb0Hf-E5HmC-idjKs20FurHSeBir-P9sUvDxdCcI';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.trim() || FALLBACK_URL;
+const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || FALLBACK_ANON;
+
+if (!import.meta.env.VITE_SUPABASE_URL) {
+  console.warn('[طرود] لم يُضبط VITE_SUPABASE_URL في ملف .env — تُستخدم القيم الاحتياطية. انسخ .env.example إلى .env.');
+}
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
   realtime: { params: { eventsPerSecond: 5 } },
 });
 
-export const PROJECT_REF = 'ncsufsacdzapfmfagron';
+/** مرجع المشروع — يُستخرج تلقائيًا من رابط القاعدة، ويُستخدم لروابط SQL Editor */
+export const PROJECT_REF = (() => {
+  try {
+    const host = new URL(SUPABASE_URL).hostname; // ncsufsacdzapfmfagron.supabase.co
+    return host.split('.')[0];
+  } catch {
+    return 'ncsufsacdzapfmfagron';
+  }
+})();
 
 export const T = {
   users: 'tarood_users', hubs: 'tarood_hubs', routes: 'tarood_routes',

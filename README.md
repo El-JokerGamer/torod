@@ -20,6 +20,23 @@ npm install
 npm run dev
 ```
 
+## الإعدادات (ملف .env)
+
+بيانات الاتصال بقاعدة البيانات تُقرأ من ملف `.env` في جذر المشروع — عدّلها هناك بسهولة دون لمس الكود:
+
+```bash
+cp .env.example .env
+```
+
+ثم املأ القيم (تجدها في لوحة Supabase: **Settings → API**):
+
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-public-key
+```
+
+> ملاحظة: ملف `.env` مستبعد من Git تلقائيًا لحماية بياناتك؛ ما يُرفع للمستودع هو `.env.example` فقط. بعد تعديل `.env` أعد تشغيل خادم التطوير (`npm run dev`) لتطبيق التغييرات.
+
 ## البناء
 
 ```bash
