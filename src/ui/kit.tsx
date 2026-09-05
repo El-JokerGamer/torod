@@ -137,12 +137,12 @@ export function Modal({ open, onClose, title, desc, icon, children, w = 'max-w-l
   if (!open) return null;
   const danger = tone === 'danger';
   return (
-    <div className="fixed inset-0 z-50 flex items-end pb-3 md:pb-0 md:block" role="dialog" aria-modal>
+    <div className="fixed inset-0 z-50 flex items-end pb-6 md:pb-0 md:block" role="dialog" aria-modal>
       {/* حجاب فاتح بلا بلور وبلا أسود — يخفت ما خلف اللوحة دون تعتيمه أو تشويشه */}
       <div className="absolute inset-0 bg-paper/85 animate-fade" onClick={onClose} />
 
       {/* لوحة القوائم: ورقة سفلية عائمة فوق حافة الشاشة على الهاتف · مثبّتة بجهة اليمين من الأعلى على الكمبيوتر */}
-      <aside className={`relative w-full max-h-[calc(92dvh-0.75rem)] bg-paper flex flex-col overflow-hidden rounded-t-2xl rounded-b-xl animate-fade-up
+      <aside className={`relative w-full max-h-[calc(92dvh-1.5rem)] bg-paper flex flex-col overflow-hidden rounded-t-2xl rounded-b-xl animate-fade-up
         md:absolute md:top-0 md:right-0 md:h-[93dvh] md:max-h-none md:w-[84%] lg:w-[66%] xl:w-1/2 md:min-w-[560px] md:max-w-[980px]
         md:rounded-t-none md:rounded-b-2xl md:rounded-l-2xl ring-1 ${danger ? 'ring-red-300/70' : 'ring-ink/10'}
         shadow-[0_-24px_70px_-24px_rgba(12,22,34,0.35),0_14px_34px_-16px_rgba(12,22,34,0.32)] md:shadow-[-24px_24px_80px_-24px_rgba(12,22,34,0.4)]
@@ -212,15 +212,15 @@ export function Drawer({ open, onClose, children }: { open: boolean; onClose: ()
     return () => { window.removeEventListener('keydown', h); setScrollLock(false); };
   }, [open, onClose]);
   return (
-    <div className={`fixed inset-0 z-50 flex items-end pb-3 md:pb-0 md:block ${open ? '' : 'pointer-events-none'}`} aria-hidden={!open}>
+    <div className={`fixed inset-0 z-50 flex items-end pb-6 md:pb-0 md:block ${open ? '' : 'pointer-events-none'}`} aria-hidden={!open}>
       <div className={`absolute inset-0 bg-paper/85 transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0'}`} onClick={onClose} />
       {/* هاتف: ورقة سفلية عائمة فوق حافة الشاشة · كمبيوتر: لوحة إجراءات مثبّتة بجهة اليمين من الأعلى — نفس تصميم قوائم الإدخال */}
-      <aside className={`relative w-full max-h-[calc(92dvh-0.75rem)] bg-paper flex flex-col overflow-hidden rounded-t-2xl rounded-b-xl
+      <aside className={`relative w-full max-h-[calc(92dvh-1.5rem)] bg-paper flex flex-col overflow-hidden rounded-t-2xl rounded-b-xl
         md:absolute md:top-0 md:right-0 md:h-[93dvh] md:max-h-none md:w-[84%] lg:w-[66%] xl:w-1/2 md:min-w-[560px] md:max-w-[980px]
         md:rounded-t-none md:rounded-b-2xl md:rounded-l-2xl md:ring-1 md:ring-ink/10
         shadow-[0_-24px_70px_-24px_rgba(12,22,34,0.35),0_14px_34px_-16px_rgba(12,22,34,0.32)] md:shadow-[-24px_24px_80px_-24px_rgba(12,22,34,0.4)]
         transition-[transform,visibility] duration-300 ease-[cubic-bezier(.16,1,.3,1)]
-        ${open ? 'translate-y-0 md:translate-x-0 visible' : 'translate-y-[calc(100%+0.75rem)] md:translate-y-0 md:translate-x-full invisible'}`}>
+        ${open ? 'translate-y-0 md:translate-x-0 visible' : 'translate-y-[calc(100%+1.5rem)] md:translate-y-0 md:translate-x-full invisible'}`}>
         <button onClick={onClose} className="md:hidden pt-2.5 pb-0.5 flex justify-center shrink-0" aria-label="إغلاق">
           <span className="w-10 h-1.5 rounded-full bg-slate-300" />
         </button>
