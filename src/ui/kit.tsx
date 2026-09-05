@@ -150,27 +150,40 @@ export function Modal({ open, onClose, title, desc, icon, children, w = 'max-w-l
         {/* شريط علوي بلون الهوية */}
         <div className={`h-1.5 shrink-0 ${danger ? 'bg-red-500' : 'bg-brand-600'}`} />
 
-        <header className={`flex items-center gap-3.5 px-5 sm:px-7 pt-5 pb-4 border-b shrink-0 ${danger ? 'border-red-100 bg-red-50/70' : 'border-slate-200/70 bg-white'}`}>
+        {/* مقبض سحب (جوال فقط) — يُشير إلى أن اللوحة ورقة سفلية */}
+        <button onClick={onClose} className="md:hidden pt-2.5 pb-1 flex justify-center shrink-0" aria-label="إغلاق">
+          <span className="w-10 h-1.5 rounded-full bg-slate-300" />
+        </button>
+
+        <header className={`flex items-center gap-3 sm:gap-3.5 px-4 sm:px-7 pt-2 sm:pt-5 pb-3 sm:pb-4 border-b shrink-0 ${danger ? 'border-red-100 bg-red-50/70' : 'border-slate-200/70 bg-white'}`}>
           {icon && (
-            <span className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-md transition-transform duration-200 hover:scale-105
+            <span className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 shadow-md transition-transform duration-200 hover:scale-105
               ${danger ? 'bg-red-600 text-white shadow-red-600/30' : 'bg-brand-600 text-white shadow-brand-600/30'}`}>
               {icon}
             </span>
           )}
           <div className="min-w-0 flex-1">
-            <h3 className={`font-display font-bold text-xl leading-tight ${danger ? 'text-red-700' : 'text-ink'}`}>{title}</h3>
-            {desc && <p className="text-xs text-slate-500 mt-1 leading-5">{desc}</p>}
+            <h3 className={`font-display font-bold text-lg sm:text-xl leading-tight ${danger ? 'text-red-700' : 'text-ink'}`}>{title}</h3>
+            {desc && <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1 leading-5">{desc}</p>}
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-ink hover:bg-slate-200/70 rounded-md p-2 transition-colors shrink-0 active:scale-90" aria-label="إغلاق">
             <X className="w-5 h-5" />
           </button>
         </header>
 
-        <div className="flex-1 min-h-0 overflow-y-auto px-5 sm:px-8 py-5">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-8 py-4 sm:py-5">
           <div className="w-full max-w-[700px] mx-auto">{children}</div>
         </div>
 
-        {footer && <footer className={`border-t px-5 sm:px-7 py-4 shrink-0 ${danger ? 'border-red-100 bg-red-50/50' : 'border-slate-200/70 bg-white'}`}>{footer}</footer>}
+        {footer && (
+          <footer className={`border-t px-4 sm:px-7 py-3 sm:py-4 shrink-0
+            pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-4
+            [&>div]:grid [&>div]:grid-cols-2 [&>div]:gap-2 [&>div]:w-full
+            sm:[&>div]:flex sm:[&>div]:justify-end sm:[&>div]:w-auto sm:[&>div]:gap-2
+            ${danger ? 'border-red-100 bg-red-50/50' : 'border-slate-200/70 bg-white'}`}>
+            {footer}
+          </footer>
+        )}
       </aside>
     </div>
   );
