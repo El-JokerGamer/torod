@@ -137,15 +137,16 @@ export function Modal({ open, onClose, title, desc, icon, children, w = 'max-w-l
   if (!open) return null;
   const danger = tone === 'danger';
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-end md:items-start" role="dialog" aria-modal>
+    <div className="fixed inset-0 z-50 flex items-end md:block" role="dialog" aria-modal>
       {/* حجاب فاتح بلا بلور وبلا أسود — يخفت ما خلف اللوحة دون تعتيمه أو تشويشه */}
       <div className="absolute inset-0 bg-paper/85 animate-fade" onClick={onClose} />
 
-      {/* لوحة القوائم: ورقة سفلية على الهاتف · من الأعلى على الكمبيوتر بطول أقل من الشاشة بشيء بسيط */}
-      <aside className={`relative w-full max-h-[92dvh] md:h-[93dvh] md:w-[84%] lg:w-[66%] xl:w-1/2 md:min-w-[560px] md:max-w-[980px] bg-paper flex flex-col overflow-hidden
-        rounded-t-2xl md:rounded-t-none md:rounded-b-2xl md:rounded-l-2xl ring-1 ${danger ? 'ring-red-300/70' : 'ring-ink/10'}
+      {/* لوحة القوائم: ورقة سفلية على الهاتف · مثبّتة فيزيائيًا بجهة اليمين من الأعلى على الكمبيوتر */}
+      <aside className={`relative w-full max-h-[92dvh] bg-paper flex flex-col overflow-hidden rounded-t-2xl animate-fade-up
+        md:absolute md:top-0 md:right-0 md:h-[93dvh] md:w-[84%] lg:w-[66%] xl:w-1/2 md:min-w-[560px] md:max-w-[980px]
+        md:rounded-t-none md:rounded-b-2xl md:rounded-l-2xl ring-1 ${danger ? 'ring-red-300/70' : 'ring-ink/10'}
         shadow-[0_-24px_70px_-24px_rgba(12,22,34,0.35)] md:shadow-[-24px_24px_80px_-24px_rgba(12,22,34,0.4)]
-        animate-fade-up md:animate-slide-in-right`}>
+        md:animate-slide-in-right`}>
         {/* شريط علوي بلون الهوية */}
         <div className={`h-1.5 shrink-0 ${danger ? 'bg-red-500' : 'bg-brand-600'}`} />
 
@@ -199,11 +200,12 @@ export function Drawer({ open, onClose, children }: { open: boolean; onClose: ()
     return () => { window.removeEventListener('keydown', h); setScrollLock(false); };
   }, [open, onClose]);
   return (
-    <div className={`fixed inset-0 z-50 flex items-end md:items-start justify-end ${open ? '' : 'pointer-events-none'}`} aria-hidden={!open}>
+    <div className={`fixed inset-0 z-50 flex items-end md:block ${open ? '' : 'pointer-events-none'}`} aria-hidden={!open}>
       <div className={`absolute inset-0 bg-paper/85 transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0'}`} onClick={onClose} />
-      {/* هاتف: ورقة سفلية · كمبيوتر: لوحة إجراءات من جهة اليمين — نفس تصميم قوائم الإدخال */}
-      <aside className={`relative w-full max-h-[92dvh] md:h-[93dvh] md:w-[84%] lg:w-[66%] xl:w-1/2 md:min-w-[560px] md:max-w-[980px] bg-paper flex flex-col overflow-hidden
-        rounded-t-2xl md:rounded-t-none md:rounded-b-2xl md:rounded-l-2xl md:ring-1 md:ring-ink/10
+      {/* هاتف: ورقة سفلية · كمبيوتر: لوحة إجراءات مثبّتة فيزيائيًا بجهة اليمين من الأعلى — نفس تصميم قوائم الإدخال */}
+      <aside className={`relative w-full max-h-[92dvh] bg-paper flex flex-col overflow-hidden rounded-t-2xl
+        md:absolute md:top-0 md:right-0 md:h-[93dvh] md:w-[84%] lg:w-[66%] xl:w-1/2 md:min-w-[560px] md:max-w-[980px]
+        md:rounded-t-none md:rounded-b-2xl md:rounded-l-2xl md:ring-1 md:ring-ink/10
         shadow-[0_-24px_70px_-24px_rgba(12,22,34,0.35)] md:shadow-[-24px_24px_80px_-24px_rgba(12,22,34,0.4)]
         transition-[transform,visibility] duration-300 ease-[cubic-bezier(.16,1,.3,1)]
         ${open ? 'translate-y-0 md:translate-x-0 visible' : 'translate-y-full md:translate-y-0 md:translate-x-full invisible'}`}>
