@@ -138,14 +138,14 @@ export function Modal({ open, onClose, title, desc, icon, children, w = 'max-w-l
   const danger = tone === 'danger';
   return (
     <div className="fixed inset-0 z-50 flex items-end md:block" role="dialog" aria-modal>
-      {/* حجاب فاتح بلا بلور وبلا أسود — يخفت ما خلف اللوحة دون تعتيمه أو تشويشه */}
-      <div className="absolute inset-0 bg-paper/85 animate-fade" onClick={onClose} />
+      {/* حجاب: أدكن على الهاتف ليبرز الورقة كطبقة عائمة فوق المحتوى · فاتح على الكمبيوتر */}
+      <div className="absolute inset-0 bg-ink/40 md:bg-paper/85 animate-fade" onClick={onClose} />
 
-      {/* لوحة القوائم: ورقة سفلية ملتصقة بالحافة السفلية على الهاتف · مثبّتة بجهة اليمين من الأعلى على الكمبيوتر */}
-      <aside className={`relative w-full max-h-[92dvh] bg-paper flex flex-col overflow-hidden rounded-t-2xl animate-fade-up
+      {/* لوحة القوائم: ورقة سفلية تأخذ ارتفاع محتواها (لا تملأ الشاشة) ملتصقة بالأسفل على الهاتف · مثبّتة بجهة اليمين من الأعلى على الكمبيوتر */}
+      <aside className={`relative w-full max-h-[80dvh] bg-paper flex flex-col overflow-hidden rounded-t-2xl animate-fade-up
         md:absolute md:top-0 md:right-0 md:h-[93dvh] md:max-h-none md:w-[84%] lg:w-[66%] xl:w-1/2 md:min-w-[560px] md:max-w-[980px]
         md:rounded-t-none md:rounded-b-2xl md:rounded-l-2xl ring-1 ${danger ? 'ring-red-300/70' : 'ring-ink/10'}
-        shadow-[0_-24px_70px_-24px_rgba(12,22,34,0.35)] md:shadow-[-24px_24px_80px_-24px_rgba(12,22,34,0.4)]
+        shadow-[0_-16px_50px_-12px_rgba(12,22,34,0.55)] md:shadow-[-24px_24px_80px_-24px_rgba(12,22,34,0.4)]
         md:animate-slide-in-right`}>
         {/* شريط علوي بلون الهوية */}
         <div className={`h-1.5 shrink-0 ${danger ? 'bg-red-500' : 'bg-brand-600'}`} />
@@ -214,12 +214,13 @@ export function Drawer({ open, onClose, children }: { open: boolean; onClose: ()
   }, [open, onClose]);
   return (
     <div className={`fixed inset-0 z-50 flex items-end md:block ${open ? '' : 'pointer-events-none'}`} aria-hidden={!open}>
-      <div className={`absolute inset-0 bg-paper/85 transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0'}`} onClick={onClose} />
-      {/* هاتف: ورقة سفلية ملتصقة بالحافة السفلية · كمبيوتر: لوحة إجراءات مثبّتة بجهة اليمين من الأعلى — نفس تصميم قوائم الإدخال */}
-      <aside className={`relative w-full max-h-[92dvh] bg-paper flex flex-col overflow-hidden rounded-t-2xl
+      {/* حجاب: أدكن على الهاتف ليبرز الورقة كطبقة عائمة · فاتح على الكمبيوتر */}
+      <div className={`absolute inset-0 bg-ink/40 md:bg-paper/85 transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0'}`} onClick={onClose} />
+      {/* هاتف: ورقة سفلية تأخذ ارتفاع محتواها (لا تملأ الشاشة) ملتصقة بالأسفل · كمبيوتر: لوحة إجراءات مثبّتة بجهة اليمين من الأعلى — نفس تصميم قوائم الإدخال */}
+      <aside className={`relative w-full max-h-[80dvh] bg-paper flex flex-col overflow-hidden rounded-t-2xl
         md:absolute md:top-0 md:right-0 md:h-[93dvh] md:max-h-none md:w-[84%] lg:w-[66%] xl:w-1/2 md:min-w-[560px] md:max-w-[980px]
         md:rounded-t-none md:rounded-b-2xl md:rounded-l-2xl md:ring-1 md:ring-ink/10
-        shadow-[0_-24px_70px_-24px_rgba(12,22,34,0.35)] md:shadow-[-24px_24px_80px_-24px_rgba(12,22,34,0.4)]
+        shadow-[0_-16px_50px_-12px_rgba(12,22,34,0.55)] md:shadow-[-24px_24px_80px_-24px_rgba(12,22,34,0.4)]
         transition-[transform,visibility] duration-300 ease-[cubic-bezier(.16,1,.3,1)]
         ${open ? 'translate-y-0 md:translate-x-0 visible' : 'translate-y-full md:translate-y-0 md:translate-x-full invisible'}`}>
         <button onClick={onClose} className="md:hidden pt-2.5 pb-0.5 flex justify-center shrink-0" aria-label="إغلاق">
