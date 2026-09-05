@@ -75,3 +75,9 @@ button, a, [role="button"] { touch-action: manipulation; }
 }
 .pt-safe { padding-top: env(safe-area-inset-top); }
 .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+
+/* خريطة العمليات: نسب أبعاد متجاوبة — مربوطة ومقروءة على الجوال، عريضة على الحاسوب */
+.ops-map { aspect-ratio: 4 / 3.2; min-height: 0; }
+@media (min-width: 768px) {
+  .ops-map { aspect-ratio: 16 / 7.5; min-height: 220px; }
+}

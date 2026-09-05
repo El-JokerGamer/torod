@@ -36,7 +36,7 @@ export function LiveMap({ db, orders, couriers, highlight, compact = false, clas
   const activeStatuses = Array.from(new Set(orders.map((o) => o.status)));
 
   return (
-    <div className={`relative overflow-hidden rounded-lg ring-1 ring-ink/30 bg-ink bg-grid-dark shadow-inner ${className}`} style={{ aspectRatio: compact ? '4 / 3.4' : '16 / 7.5', minHeight: compact ? 0 : 220 }} dir="ltr">
+    <div className={`relative overflow-hidden rounded-lg ring-1 ring-ink/30 bg-ink bg-grid-dark shadow-inner ${compact ? '' : 'ops-map'} ${className}`} style={compact ? { aspectRatio: '4 / 3.4' } : undefined} dir="ltr">
       <svg viewBox="0 0 100 58" className="w-full h-full block" preserveAspectRatio="xMidYMid meet">
         <defs>
           <linearGradient id="water" x1="0" y1="0" x2="1" y2="0">

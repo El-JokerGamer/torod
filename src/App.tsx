@@ -456,8 +456,9 @@ function Shell({ me, conn, onSetup, setupModal }: { me: User; conn: Conn; onSetu
       {/* درج القائمة — جوال */}
       {drawer && (
         <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-ink/55" onClick={() => setDrawer(false)} />
-          <aside className="absolute inset-y-0 start-0 w-72 max-w-[85vw] bg-ink bg-grid-dark flex flex-col shadow-2xl animate-fade-up pt-safe">
+          <div className="absolute inset-0 bg-ink/55 animate-fade" onClick={() => setDrawer(false)} />
+          {/* درج القائمة مثبّت فيزيائيًا على الحافة اليمنى وينزلق من اليمين دائمًا */}
+          <aside className="absolute inset-y-0 right-0 w-72 max-w-[85vw] bg-ink bg-grid-dark flex flex-col shadow-2xl animate-slide-in-right pt-safe">
             <div className="flex items-center gap-2.5 px-4 h-16 border-b border-white/5">
               <AppIcon className="w-9 h-9 rounded-lg" />
               <div>
