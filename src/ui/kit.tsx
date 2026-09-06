@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { ReactNode } from 'react';
 import { X, Package, AlertTriangle, Check, Zap, Trash2 } from 'lucide-react';
 import { STATUS_META, PRIORITIES, avatarColor, initials } from '../lib/data';
@@ -136,7 +137,8 @@ export function Modal({ open, onClose, title, desc, icon, children, w = 'max-w-l
   }, [open, onClose]);
   if (!open) return null;
   const danger = tone === 'danger';
-  return (
+  // يُركَّب في document.body مباشرة ليتجاوز أي transform على أسلافه (يثبت الموضع على الجوال)
+  return createPortal(
     <div className="fixed inset-0 z-50" role="dialog" aria-modal>
       {/* حجاب: أدكن على الهاتف ليبرز الورقة كطبقة عائمة فوق المحتوى · فاتح على الكمبيوتر */}
       <div className="absolute inset-0 bg-ink/40 md:bg-paper/85 animate-fade" onClick={onClose} />
@@ -185,7 +187,8 @@ export function Modal({ open, onClose, title, desc, icon, children, w = 'max-w-l
           </footer>
         )}
       </aside>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -212,7 +215,8 @@ export function Drawer({ open, onClose, children }: { open: boolean; onClose: ()
     setScrollLock(true);
     return () => { window.removeEventListener('keydown', h); setScrollLock(false); };
   }, [open, onClose]);
-  return (
+  // يُركَّب في document.body مباشرة ليتجاوز أي transform على أسلافه (يثبت الموضع على الجوال)
+  return createPortal(
     <div className={`fixed inset-0 z-50 ${open ? '' : 'pointer-events-none'}`} aria-hidden={!open}>
       {/* حجاب: أدكن على الهاتف ليبرز الورقة كطبقة عائمة · فاتح على الكمبيوتر */}
       <div className={`absolute inset-0 bg-ink/40 md:bg-paper/85 transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0'}`} onClick={onClose} />
@@ -228,7 +232,8 @@ export function Drawer({ open, onClose, children }: { open: boolean; onClose: ()
         </button>
         {children}
       </aside>
-    </div>
+    </div>,
+    document.body
   );
 }
 
