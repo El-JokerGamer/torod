@@ -168,7 +168,7 @@ function AssignCouriers({ route, me, onClose }: { route: Route; me: User; onClos
 
 function NewRouteModal({ me, onClose }: { me: User; onClose: () => void }) {
   const db = useDB();
-  const [f, setF] = useState({ name: '', code: '' });
+  const [f, setF] = useState({ name: '', code: '', deliveryFee: '0' });
   const [sel, setSel] = useState<string[]>([]);
   const [err, setErr] = useState('');
   const couriers = db.users.filter((u) => u.role === 'courier');
@@ -177,7 +177,8 @@ function NewRouteModal({ me, onClose }: { me: User; onClose: () => void }) {
     e.preventDefault();
     if (f.name.trim().length < 3) return setErr('أدخل اسم المسار');
     if (!/^[A-Za-z]{2,4}$/.test(f.code.trim())) return setErr('كود المسار: 2-4 حروف لاتينية');
-    addRoute(me, { name: f.name.trim(), code: f.code.trim(), courierIds: sel });
+    const deliveryFee = Number(f.deliveryFee) || 0;
+    addRoute(me, { name: f.name.trim(), code: f.code.trim(), courierIds: sel, deliveryFee });
     onClose();
   };
 
@@ -194,6 +195,12 @@ function NewRouteModal({ me, onClose }: { me: User; onClose: () => void }) {
           </Field>
         </div>
         {err && <p className="text-[11px] font-semibold text-red-600">{err}</p>}
+        
+        <Field label="💰 قيمة التوصيل (ج.م)" hint="تكلفة التوصيل للعميل في هذا المسار">
+          <Input dir="ltr" className="num text-left" type="number" min={0} step={0.5}
+            value={f.deliveryFee} onChange={(e) => setF({ ...f, deliveryFee: e.target.value })} placeholder="0" />
+        </Field>
+        
         <div>
           <div className="text-xs font-semibold text-slate-600 mb-1.5">المندوبون على المسار</div>
           <div className="flex flex-wrap gap-1.5">
