@@ -128,6 +128,15 @@ export function Modal({ open, onClose, title, desc, icon, children, w = 'max-w-l
   open: boolean; onClose: () => void; title: ReactNode; desc?: ReactNode; icon?: ReactNode;
   children: ReactNode; w?: string; tone?: 'danger'; footer?: ReactNode;
 }) {
+  // كشف الجوال: يُركَّب في document.body مباشرة ليتجاوز أي transform على أسلافه
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     const h = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -137,8 +146,7 @@ export function Modal({ open, onClose, title, desc, icon, children, w = 'max-w-l
   }, [open, onClose]);
   if (!open) return null;
   const danger = tone === 'danger';
-  // يُركَّب في document.body مباشرة ليتجاوز أي transform على أسلافه (يثبت الموضع على الجوال)
-  return createPortal(
+  const content = (
     <div className="fixed inset-0 z-50" role="dialog" aria-modal>
       {/* حجاب: أدكن على الهاتف ليبرز الورقة كطبقة عائمة فوق المحتوى · فاتح على الكمبيوتر */}
       <div className="absolute inset-0 bg-ink/40 md:bg-paper/85 animate-fade" onClick={onClose} />
@@ -187,9 +195,9 @@ export function Modal({ open, onClose, title, desc, icon, children, w = 'max-w-l
           </footer>
         )}
       </aside>
-    </div>,
-    document.body
+    </div>
   );
+  return isMobile ? createPortal(content, document.body) : content;
 }
 
 /** فاصل قسم داخل نماذج الإدخال: أيقونة + عنوان + خط */
@@ -208,6 +216,14 @@ export function FormSection({ label, icon }: { label: string; icon?: ReactNode }
 }
 
 export function Drawer({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
+  // كشف الجوال: يُركَّب في document.body مباشرة ليتجاوز أي transform على أسلافه
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     const h = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -215,8 +231,7 @@ export function Drawer({ open, onClose, children }: { open: boolean; onClose: ()
     setScrollLock(true);
     return () => { window.removeEventListener('keydown', h); setScrollLock(false); };
   }, [open, onClose]);
-  // يُركَّب في document.body مباشرة ليتجاوز أي transform على أسلافه (يثبت الموضع على الجوال)
-  return createPortal(
+  const content = (
     <div className={`fixed inset-0 z-50 ${open ? '' : 'pointer-events-none'}`} aria-hidden={!open}>
       {/* حجاب: أدكن على الهاتف ليبرز الورقة كطبقة عائمة · فاتح على الكمبيوتر */}
       <div className={`absolute inset-0 bg-ink/40 md:bg-paper/85 transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0'}`} onClick={onClose} />
@@ -232,9 +247,9 @@ export function Drawer({ open, onClose, children }: { open: boolean; onClose: ()
         </button>
         {children}
       </aside>
-    </div>,
-    document.body
+    </div>
   );
+  return isMobile ? createPortal(content, document.body) : content;
 }
 
 export function Confirm({ open, onClose, onYes, title, msg, yes = 'حذف نهائي' }: {
