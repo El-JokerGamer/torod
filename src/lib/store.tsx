@@ -370,7 +370,7 @@ const ev = (by: string, label: string, kind: 'ok' | 'info' | 'warn' | 'bad' = 'i
   ({ at: Date.now(), by, label, kind, note });
 const touch = (o: Order, e: ReturnType<typeof ev>) => { o.timeline.push(e); o.updatedAt = Date.now(); };
 
-export function createOrder(me: User, data: { customer: string; phone: string; address: string; zoneId: string; cod: number; hubId: string }) {
+export function createOrder(me: User, data: { customer: string; phone: string; address: string; zoneId: string; cod: number; hubId: string; paymentType: 'cod' | 'online' }) {
   if (!can(me, ['owner', 'ops', 'hub'])) return toast('صلاحية غير كافية', 'error');
   if (me.role === 'hub' && !me.hubIds.includes(data.hubId))
     return toast('يمكنك إنشاء طلبات لمخازنك المرتبطة فقط', 'error');
@@ -382,7 +382,7 @@ export function createOrder(me: User, data: { customer: string; phone: string; a
     const now = Date.now();
     d.orders.unshift({
       id: uid(), code, customer: data.customer, phone: data.phone, address: data.address,
-      zoneId: data.zoneId, hubId: data.hubId, cod: data.cod, status: 'created',
+      zoneId: data.zoneId, hubId: data.hubId, cod: data.cod, paymentType: data.paymentType, status: 'created',
       timeline: [ev(me.name, 'إنشاء الطلب')], x: zoneX(data.zoneId), y: zoneY(data.zoneId),
       createdAt: now, updatedAt: now,
     });
@@ -525,9 +525,10 @@ export function issueReturnAction(me: User, issueId: string, action: 'redeliver'
 
 // ── إجراءات: التحصيل والتسويات ──
 export function courierCollected(db: DB, courierId: string) {
-  const orders = db.orders.filter((o) => o.courierId === courierId && ['handed', 'on_way', 'arrived', 'assigned'].includes(o.status));
+  // استبعاد الطلبات الأونلاين من حسابات COD
+  const orders = db.orders.filter((o) => o.courierId === courierId && o.paymentType === 'cod' && ['handed', 'on_way', 'arrived', 'assigned'].includes(o.status));
   const amount = orders.reduce((s, o) => s + o.cod, 0);
-  const allDelivered = db.orders.filter((o) => o.courierId === courierId && o.status === 'delivered');
+  const allDelivered = db.orders.filter((o) => o.courierId === courierId && o.paymentType === 'cod' && o.status === 'delivered');
   return { orders, amount, allDeliveredAmount: allDelivered.reduce((s, o) => s + o.cod, 0) };
 }
 

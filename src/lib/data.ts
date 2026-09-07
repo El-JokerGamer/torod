@@ -20,15 +20,22 @@ export type OrderStatus =
   | 'created' | 'assigned' | 'handed' | 'on_way' | 'arrived'
   | 'delivered' | 'failed' | 'returned';
 
+export type PaymentType = 'cod' | 'online';
+
 export interface TimelineEvent { at: number; by: string; label: string; kind: 'ok' | 'info' | 'warn' | 'bad'; note?: string }
 
 export interface Order {
   id: string; code: string; customer: string; phone: string; address: string;
-  zoneId: string; hubId: string; cod: number; status: OrderStatus;
+  zoneId: string; hubId: string; cod: number; paymentType: PaymentType; status: OrderStatus;
   courierId?: string; recipientName?: string; failReason?: string; failNote?: string;
   settlementId?: string; pod?: string; timeline: TimelineEvent[];
   x: number; y: number; createdAt: number; updatedAt: number;
 }
+
+export const PAYMENT_TYPES: Record<PaymentType, { label: string; chip: string; icon: string }> = {
+  cod: { label: 'نقدي (COD)', chip: 'bg-amber-50 text-amber-800 ring-amber-600/25', icon: '💵' },
+  online: { label: 'أونلاين', chip: 'bg-sky-50 text-sky-700 ring-sky-600/25', icon: '💳' },
+};
 
 export type Priority = 'low' | 'medium' | 'high' | 'critical';
 export type IssueStatus = 'open' | 'progress' | 'resolved' | 'closed';

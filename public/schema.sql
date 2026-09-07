@@ -23,6 +23,7 @@ create table if not exists public.tarood_orders (
   id text primary key, code text not null unique, customer text not null,
   phone text not null, address text not null, zone_id text not null, hub_id text not null,
   cod numeric not null default 0,
+  payment_type text not null default 'cod' check (payment_type in ('cod','online')),
   status text not null default 'created' check (status in ('created','assigned','handed',
     'on_way','arrived','delivered','failed','returned')),
   courier_id text, recipient_name text, fail_reason text, fail_note text,
@@ -31,6 +32,7 @@ create table if not exists public.tarood_orders (
   created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
 alter table public.tarood_orders add column if not exists pod text;
+alter table public.tarood_orders add column if not exists payment_type text not null default 'cod';
 create index if not exists idx_tarood_orders_status  on public.tarood_orders (status);
 create index if not exists idx_tarood_orders_courier on public.tarood_orders (courier_id);
 create index if not exists idx_tarood_orders_hub     on public.tarood_orders (hub_id);

@@ -125,9 +125,15 @@ export default function Orders() {
                     <td className="px-3 py-2.5 hidden md:table-cell text-slate-600">{zoneById(o.zoneId)?.name}</td>
                     <td className="px-3 py-2.5 hidden lg:table-cell text-slate-600 text-xs">{db.hubs.find((h) => h.id === o.hubId)?.name ?? '—'}</td>
                     <td className="px-3 py-2.5">
-                      {o.cod > 0
-                        ? <span className="num text-xs font-bold text-brand-700">{money(o.cod)}</span>
-                        : <span className="text-[11px] text-slate-400">—</span>}
+                      {o.paymentType === 'online' ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-700 bg-sky-50 ring-1 ring-sky-600/25 rounded-full px-2 py-0.5">
+                          💳 أونلاين
+                        </span>
+                      ) : o.cod > 0 ? (
+                        <span className="num text-xs font-bold text-brand-700">{money(o.cod)}</span>
+                      ) : (
+                        <span className="text-[11px] text-slate-400">—</span>
+                      )}
                     </td>
                     <td className="px-3 py-2.5"><StatusBadge s={o.status} /></td>
                     <td className="px-3 py-2.5 hidden xl:table-cell">
@@ -364,7 +370,7 @@ function NewOrderModal({ me, onClose }: { me: User; onClose: () => void }) {
   const db = useDB();
   const isHubStaff = me.role === 'hub';
   const myHubs = isHubStaff ? db.hubs.filter((h) => me.hubIds.includes(h.id)) : db.hubs;
-  const [f, setF] = useState({ customer: '', phone: '', address: '', zoneId: ZONES[8].id, cod: '', hubId: '' });
+  const [f, setF] = useState({ customer: '', phone: '', address: '', zoneId: ZONES[8].id, cod: '', hubId: '', paymentType: 'cod' as 'cod' | 'online' });
   const [errs, setErrs] = useState<Record<string, string>>({});
   const [zoneChanged, setZoneChanged] = useState(false);
 
@@ -380,13 +386,13 @@ function NewOrderModal({ me, onClose }: { me: User; onClose: () => void }) {
     if (f.address.trim().length < 6) er.address = 'أدخل عنوانًا تفصيليًا للتوصيل';
     const hubId = zoneChanged && f.hubId ? f.hubId : hubForZone(f.zoneId);
     if (!hubId) er.hubId = 'اختر مخزن الفرز';
-    const cod = Number(f.cod || 0);
-    if (Number.isNaN(cod) || cod < 0) er.cod = 'قيمة غير صالحة';
+    const cod = f.paymentType === 'online' ? 0 : Number(f.cod || 0);
+    if (f.paymentType === 'cod' && (Number.isNaN(cod) || cod < 0)) er.cod = 'قيمة غير صالحة';
     setErrs(er);
     if (Object.keys(er).length) return;
     createOrder(me, {
       customer: f.customer.trim(), phone: f.phone.trim(), address: f.address.trim(),
-      zoneId: f.zoneId, cod, hubId,
+      zoneId: f.zoneId, cod, hubId, paymentType: f.paymentType,
     });
     onClose();
   };
@@ -424,14 +430,11 @@ function NewOrderModal({ me, onClose }: { me: User; onClose: () => void }) {
         </Field>
 
         <FormSection label="التوجيه والتحصيل" />
-        <div className="grid sm:grid-cols-3 gap-3.5">
+        <div className="grid sm:grid-cols-2 gap-3.5">
           <Field label="منطقة التغطية" hint={`كود التتبع: ${previewCode}`}>
             <Select value={f.zoneId} onChange={(e) => { setF({ ...f, zoneId: e.target.value }); setZoneChanged(true); }}>
               {ZONES.map((z) => <option key={z.id} value={z.id}>{z.name} ({z.code})</option>)}
             </Select>
-          </Field>
-          <Field label="قيمة COD" error={errs.cod} hint="0 = بدون تحصيل">
-            <Input dir="ltr" className="num text-left" type="number" min={0} value={f.cod} onChange={(e) => setF({ ...f, cod: e.target.value })} placeholder="450" />
           </Field>
           <Field label="مخزن الفرز" error={errs.hubId} hint={isHubStaff ? 'مقيّد بمخازنك' : undefined}>
             <Select value={zoneChanged ? f.hubId : hubForZone(f.zoneId)} onChange={(e) => { setF({ ...f, hubId: e.target.value }); setZoneChanged(true); }} disabled={isHubStaff && myHubs.length === 1}>
@@ -439,6 +442,53 @@ function NewOrderModal({ me, onClose }: { me: User; onClose: () => void }) {
             </Select>
           </Field>
         </div>
+
+        <FormSection label="طريقة الدفع" />
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setF({ ...f, paymentType: 'cod' })}
+            className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${
+              f.paymentType === 'cod'
+                ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-200'
+                : 'border-slate-200 bg-white hover:border-slate-300'
+            }`}
+          >
+            <span className="text-3xl">💵</span>
+            <div className="text-right">
+              <div className="font-bold text-sm">نقدي (COD)</div>
+              <div className="text-xs text-slate-500">التحصيل عند التسليم</div>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setF({ ...f, paymentType: 'online', cod: '' })}
+            className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${
+              f.paymentType === 'online'
+                ? 'border-sky-500 bg-sky-50 ring-2 ring-sky-200'
+                : 'border-slate-200 bg-white hover:border-slate-300'
+            }`}
+          >
+            <span className="text-3xl">💳</span>
+            <div className="text-right">
+              <div className="font-bold text-sm">أونلاين</div>
+              <div className="text-xs text-slate-500">مدفوع مسبقًا</div>
+            </div>
+          </button>
+        </div>
+
+        {f.paymentType === 'cod' && (
+          <Field label="قيمة التحصيل (COD)" error={errs.cod} hint="0 = بدون تحصيل">
+            <Input dir="ltr" className="num text-left" type="number" min={0} value={f.cod} onChange={(e) => setF({ ...f, cod: e.target.value })} placeholder="450" />
+          </Field>
+        )}
+
+        {f.paymentType === 'online' && (
+          <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 text-sm text-sky-800">
+            <div className="font-bold mb-1">💳 الدفع الأونلاين</div>
+            <div className="text-xs">هذا الطلب مدفوع مسبقًا ولن يظهر في حسابات التسوية النقدية.</div>
+          </div>
+        )}
         {isHubStaff && (
           <div className="flex items-center gap-2 text-[11px] font-semibold text-sky-800 bg-sky-50 ring-1 ring-sky-200 rounded-md px-3 py-2">
             <Warehouse className="w-4 h-4 shrink-0" />

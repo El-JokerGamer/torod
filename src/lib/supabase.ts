@@ -85,7 +85,7 @@ const rowToRoute = (r: any): Route => ({
 
 export const orderToRow = (o: Order): Record<string, unknown> => ({
   id: o.id, code: o.code, customer: o.customer, phone: o.phone, address: o.address,
-  zone_id: o.zoneId, hub_id: o.hubId, cod: o.cod, status: o.status,
+  zone_id: o.zoneId, hub_id: o.hubId, cod: o.cod, payment_type: o.paymentType, status: o.status,
   courier_id: o.courierId ?? null, recipient_name: o.recipientName ?? null,
   fail_reason: o.failReason ?? null, fail_note: o.failNote ?? null,
   settlement_id: o.settlementId ?? null, pod: o.pod ?? null,
@@ -95,7 +95,7 @@ export const orderToRow = (o: Order): Record<string, unknown> => ({
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const rowToOrder = (r: any): Order => ({
   id: r.id, code: r.code, customer: r.customer, phone: r.phone, address: r.address,
-  zoneId: r.zone_id, hubId: r.hub_id, cod: Number(r.cod ?? 0), status: r.status,
+  zoneId: r.zone_id, hubId: r.hub_id, cod: Number(r.cod ?? 0), paymentType: r.payment_type ?? 'cod', status: r.status,
   courierId: r.courier_id ?? undefined, recipientName: r.recipient_name ?? undefined,
   failReason: r.fail_reason ?? undefined, failNote: r.fail_note ?? undefined,
   settlementId: r.settlement_id ?? undefined, pod: r.pod ?? undefined,

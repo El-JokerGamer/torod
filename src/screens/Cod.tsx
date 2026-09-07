@@ -22,8 +22,10 @@ export default function Cod() {
     return (c?.name.toLowerCase().includes(needle) ?? false) || (c?.username.toLowerCase().includes(needle) ?? false);
   });
 
-  const totalCollected = db.orders.filter((o) => o.status === 'delivered').reduce((s, o) => s + o.cod, 0);
-  const totalPending = allCouriers.reduce((s, c) => s + courierCollected(db, c.id).amount, 0);
+  // استبعاد الطلبات الأونلاين من حسابات COD
+  const codOrders = db.orders.filter((o) => o.paymentType === 'cod');
+  const totalCollected = codOrders.filter((o) => o.status === 'delivered').reduce((s, o) => s + o.cod, 0);
+  const totalPending = allCouriers.reduce((s, c) => s + courierCollected({ ...db, orders: codOrders }, c.id).amount, 0);
   const settledSum = db.settlements.filter((s) => s.status === 'settled').reduce((s, x) => s + x.net, 0);
 
   return (
