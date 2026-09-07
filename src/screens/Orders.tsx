@@ -443,6 +443,24 @@ function NewOrderModal({ me, onClose }: { me: User; onClose: () => void }) {
           </Field>
         </div>
 
+        {/* عرض قيمة التوصيل للمنطقة المختارة */}
+        {(() => {
+          const route = db.routes.find((r) => r.zoneId === f.zoneId);
+          const fee = route?.deliveryFee ?? 0;
+          return fee > 0 ? (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">💰</span>
+                <div>
+                  <div className="text-xs font-bold text-emerald-800">قيمة التوصيل لهذه المنطقة</div>
+                  <div className="text-[10px] text-emerald-600">تُضاف تلقائيًا عند إنشاء الطلب</div>
+                </div>
+              </div>
+              <div className="num text-lg font-bold text-emerald-700">{money(fee)}</div>
+            </div>
+          ) : null;
+        })()}
+
         <FormSection label="طريقة الدفع" />
         <div className="grid grid-cols-2 gap-3">
           <button

@@ -345,12 +345,21 @@ export function deleteHub(me: User, id: string) {
 }
 
 // ── إجراءات: المسارات ──
-export function addRoute(me: User, data: { name: string; code: string; courierIds: string[] }) {
+export function addRoute(me: User, data: { name: string; code: string; courierIds: string[]; deliveryFee?: number }) {
   if (!can(me, ['owner', 'ops'])) return toast('صلاحية غير كافية', 'error');
   if (state.routes.some((r) => r.code.toUpperCase() === data.code.toUpperCase()))
     return toast('كود المسار مستخدم بالفعل', 'error');
-  mutate((d) => d.routes.push({ id: uid(), name: data.name, code: data.code.toUpperCase(), zoneId: null, custom: true, courierIds: data.courierIds }));
+  mutate((d) => d.routes.push({ id: uid(), name: data.name, code: data.code.toUpperCase(), zoneId: null, custom: true, courierIds: data.courierIds, deliveryFee: data.deliveryFee ?? 0 }));
   toast('تم إنشاء المسار المخصص');
+}
+
+export function updateRouteDeliveryFee(me: User, routeId: string, deliveryFee: number) {
+  if (!can(me, ['owner'])) return toast('صلاحية غير كافية — المالك فقط', 'error');
+  mutate((d) => {
+    const r = d.routes.find((x) => x.id === routeId);
+    if (r) r.deliveryFee = deliveryFee;
+  });
+  toast('تم تحديث قيمة التوصيل');
 }
 
 export function setRouteCouriers(me: User, routeId: string, courierIds: string[]) {
@@ -370,7 +379,7 @@ const ev = (by: string, label: string, kind: 'ok' | 'info' | 'warn' | 'bad' = 'i
   ({ at: Date.now(), by, label, kind, note });
 const touch = (o: Order, e: ReturnType<typeof ev>) => { o.timeline.push(e); o.updatedAt = Date.now(); };
 
-export function createOrder(me: User, data: { customer: string; phone: string; address: string; zoneId: string; cod: number; hubId: string; paymentType: 'cod' | 'online' }) {
+export function createOrder(me: User, data: { customer: string; phone: string; address: string; zoneId: string; cod: number; hubId: string; paymentType: 'cod' | 'online'; deliveryFee?: number }) {
   if (!can(me, ['owner', 'ops', 'hub'])) return toast('صلاحية غير كافية', 'error');
   if (me.role === 'hub' && !me.hubIds.includes(data.hubId))
     return toast('يمكنك إنشاء طلبات لمخازنك المرتبطة فقط', 'error');
@@ -380,6 +389,9 @@ export function createOrder(me: User, data: { customer: string; phone: string; a
     d.seq[zone!.code] = seq;
     const code = `${zone!.code}-${String(seq).padStart(4, '0')}`;
     const now = Date.now();
+    // جلب قيمة التوصيل من المسار المرتبط بالمنطقة
+    const route = d.routes.find((r) => r.zoneId === data.zoneId);
+    const deliveryFee = data.deliveryFee ?? route?.deliveryFee ?? 0;
     d.orders.unshift({
       id: uid(), code, customer: data.customer, phone: data.phone, address: data.address,
       zoneId: data.zoneId, hubId: data.hubId, cod: data.cod, paymentType: data.paymentType, status: 'created',

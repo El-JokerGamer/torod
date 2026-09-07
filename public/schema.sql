@@ -49,8 +49,10 @@ create table if not exists public.tarood_hubs (
 create table if not exists public.tarood_routes (
   id text primary key, name text not null, code text not null unique, zone_id text,
   custom boolean not null default false, courier_ids jsonb not null default '[]'::jsonb,
+  delivery_fee numeric not null default 0,
   created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
+alter table public.tarood_routes add column if not exists delivery_fee numeric not null default 0;
 
 -- 5) المشاكل والحوادث (محادثة البلاغ داخل updates)
 create table if not exists public.tarood_issues (

@@ -76,11 +76,11 @@ export const hubToRow = (h: Hub): Record<string, unknown> => ({
 const rowToHub = (r: any): Hub => ({ id: r.id, name: r.name, zoneId: r.zone_id, address: r.address ?? '', phone: r.phone ?? '' });
 
 export const routeToRow = (rt: Route): Record<string, unknown> => ({
-  id: rt.id, name: rt.name, code: rt.code, zone_id: rt.zoneId, custom: rt.custom, courier_ids: rt.courierIds,
+  id: rt.id, name: rt.name, code: rt.code, zone_id: rt.zoneId, custom: rt.custom, courier_ids: rt.courierIds, delivery_fee: rt.deliveryFee,
 });
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const rowToRoute = (r: any): Route => ({
-  id: r.id, name: r.name, code: r.code, zoneId: r.zone_id ?? null, custom: !!r.custom, courierIds: r.courier_ids ?? [],
+  id: r.id, name: r.name, code: r.code, zoneId: r.zone_id ?? null, custom: !!r.custom, courierIds: r.courier_ids ?? [], deliveryFee: Number(r.delivery_fee ?? 0),
 });
 
 export const orderToRow = (o: Order): Record<string, unknown> => ({

@@ -14,7 +14,7 @@ export const ROLE_LABELS: Record<Role, string> = {
 };
 
 export interface Hub { id: string; name: string; zoneId: string; address: string; phone: string }
-export interface Route { id: string; name: string; code: string; zoneId: string | null; custom: boolean; courierIds: string[] }
+export interface Route { id: string; name: string; code: string; zoneId: string | null; custom: boolean; courierIds: string[]; deliveryFee: number }
 
 export type OrderStatus =
   | 'created' | 'assigned' | 'handed' | 'on_way' | 'arrived'
@@ -200,7 +200,7 @@ export function initialState(): DB {
       role: 'owner', phone: '01001234501', hubIds: [], online: false, active: true, createdAt: now,
     }],
     hubs: [],
-    routes: ZONES.map((z) => ({ id: `r-${z.code}`, name: `مسار ${z.name}`, code: z.code, zoneId: z.id, custom: false, courierIds: [] })),
+    routes: ZONES.map((z) => ({ id: `r-${z.code}`, name: `مسار ${z.name}`, code: z.code, zoneId: z.id, custom: false, courierIds: [], deliveryFee: 0 })),
     orders: [], issues: [], settlements: [], seq: {}, positions: {},
   };
 }

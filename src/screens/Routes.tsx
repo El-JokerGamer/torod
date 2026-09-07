@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Search, Plus, Pencil, Route as RouteIcon, Bike } from 'lucide-react';
-import { useDB, useMe, addRoute, setRouteCouriers } from '../lib/store';
-import { ZONES } from '../lib/data';
+import { Search, Plus, Pencil, Route as RouteIcon, Bike, Banknote } from 'lucide-react';
+import { useDB, useMe, addRoute, setRouteCouriers, updateRouteDeliveryFee } from '../lib/store';
+import { ZONES, money } from '../lib/data';
 import type { Route, User } from '../lib/data';
 import { Btn, Modal, Field, Input, Empty, Avatar, Badge, CodeChip } from '../ui/kit';
 
@@ -10,9 +10,11 @@ export default function Routes() {
   const me = useMe()!;
   const [tab, setTab] = useState<'zones' | 'custom'>('zones');
   const [assignFor, setAssignFor] = useState<Route | null>(null);
+  const [editFeeFor, setEditFeeFor] = useState<Route | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [q, setQ] = useState('');
   const canEdit = ['owner', 'ops'].includes(me.role);
+  const isOwner = me.role === 'owner';
 
   const zoneRoutes = db.routes.filter((r) => !r.custom);
   const customRoutes = db.routes.filter((r) => r.custom);
@@ -92,6 +94,20 @@ export default function Routes() {
                   )}
                 </div>
 
+                {/* قيمة التوصيل */}
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+                  <div className="flex items-center gap-1.5">
+                    <Banknote className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="text-[10px] font-bold text-slate-500">قيمة التوصيل:</span>
+                    <span className="num text-sm font-bold text-emerald-700">{money(r.deliveryFee)}</span>
+                  </div>
+                  {isOwner && (
+                    <button onClick={() => setEditFeeFor(r)} className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-0.5">
+                      <Pencil className="w-3 h-3" /> تعديل
+                    </button>
+                  )}
+                </div>
+
                 {r.zoneId && (
                   <div className="grid grid-cols-3 gap-1.5 mt-3 pt-3 border-t border-slate-100 text-center">
                     <div><div className="num text-sm font-bold text-ink">{s.total}</div><div className="text-[9px] text-slate-400 font-semibold">إجمالي</div></div>
@@ -106,6 +122,7 @@ export default function Routes() {
       )}
 
       {assignFor && <AssignCouriers route={assignFor} me={me} onClose={() => setAssignFor(null)} />}
+      {editFeeFor && <EditDeliveryFeeModal route={editFeeFor} me={me} onClose={() => setEditFeeFor(null)} />}
       {showNew && <NewRouteModal me={me} onClose={() => setShowNew(false)} />}
     </div>
   );
@@ -196,6 +213,39 @@ function NewRouteModal({ me, onClose }: { me: User; onClose: () => void }) {
         <div className="flex justify-end gap-2 pt-1">
           <Btn type="button" v="ghost" onClick={onClose}>إلغاء</Btn>
           <Btn type="submit" icon={<Plus className="w-4 h-4" />}>إنشاء المسار</Btn>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function EditDeliveryFeeModal({ route, me, onClose }: { route: Route; me: User; onClose: () => void }) {
+  const [fee, setFee] = useState(String(route.deliveryFee));
+  const [err, setErr] = useState('');
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const num = Number(fee);
+    if (isNaN(num) || num < 0) return setErr('قيمة غير صالحة');
+    updateRouteDeliveryFee(me, route.id, num);
+    onClose();
+  };
+
+  return (
+    <Modal open onClose={onClose} title={`تعديل قيمة التوصيل — ${route.name}`} w="max-w-sm"
+      icon={<Banknote className="w-5 h-5" />} desc="حدد قيمة خدمة التوصيل لهذه المنطقة">
+      <form onSubmit={submit} className="space-y-3.5">
+        <Field label="قيمة التوصيل (ج.م)" error={err}>
+          <Input dir="ltr" className="num text-left text-lg font-bold" type="number" min={0} step={0.5}
+            value={fee} onChange={(e) => { setFee(e.target.value); setErr(''); }} placeholder="0" />
+        </Field>
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm text-emerald-800">
+          <div className="font-bold mb-1">💡 ملاحظة</div>
+          <div className="text-xs">هذه القيمة هي تكلفة التوصيل للعميل في هذه المنطقة. سيتم إضافتها تلقائيًا عند إنشاء طلب جديد.</div>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Btn type="button" v="ghost" onClick={onClose}>إلغاء</Btn>
+          <Btn type="submit" icon={<Banknote className="w-4 h-4" />}>حفظ القيمة</Btn>
         </div>
       </form>
     </Modal>
