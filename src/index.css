@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+/* القواعد الأساسية */
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #eef0ec;
+}
+
+@theme {
+  --font-display: "Changa", "IBM Plex Sans Arabic", sans-serif;
+  --font-body: "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+
+  --color-ink: #0c1622;
+  --color-ink-2: #122131;
+  --color-ink-3: #1b2e42;
+  --color-ink-4: #27405a;
+  --color-paper: #f2f3ef;
+
+  --color-brand-50: #fdf1ea;
+  --color-brand-100: #fbe2d2;
+  --color-brand-200: #f7c3a4;
+  --color-brand-300: #f29b6c;
+  --color-brand-400: #ec6f38;
+  --color-brand-500: #e8501e;
+  --color-brand-600: #d14214;
+  --color-brand-700: #ad3610;
+  --color-brand-800: #8a2b0e;
+  --color-brand-900: #71250f;
+
+  --color-petrol-100: #d7ecea;
+  --color-petrol-500: #177f79;
+  --color-petrol-700: #0f5f5b;
+
+  --animate-fade-up: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-pop: pop 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-fade: fadeIn 0.25s ease both;
+  --animate-slide-in-right: slideInRight 0.34s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-pulse-dot: pulseDot 2s ease-out infinite;
+  --animate-scanline: scanY 2.2s ease-in-out infinite;
+  --animate-dashmove: dashMove 7s linear infinite;
+  --animate-shake: shake 0.5s ease both;
+  --animate-ping-soft: pingSoft 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+  --animate-blink: blink 1.6s ease-in-out infinite;
+}
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pop { from { opacity: 0; transform: scale(0.95) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideInRight { from { transform: translateX(100%); opacity: 0.5; } to { transform: translateX(0); opacity: 1; } }
+@keyframes pulseDot { 0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55); } 70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); } }
+@keyframes scanY { 0% { top: 6%; } 50% { top: calc(94% - 2px); } 100% { top: 6%; } }
+@keyframes dashMove { to { stroke-dashoffset: -260; } }
+@keyframes shake {
+  10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-4px); } 40%, 60% { transform: translateX(4px); }
+}
+@keyframes pingSoft { 0% { transform: scale(1); opacity: 0.8; } 75%, 100% { transform: scale(2.6); opacity: 0; } }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+html { font-family: var(--font-body); }
+body { background: var(--color-paper); color: #1e293b; -webkit-font-smoothing: antialiased; }
+::selection { background: rgba(232, 80, 30, 0.22); }
+* { scrollbar-width: thin; scrollbar-color: #b9beb2 transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: #b9beb2; border-radius: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
+  outline: 2px solid rgba(232, 80, 30, 0.55); outline-offset: 1px;
+}
+input, select, textarea { touch-action: manipulation; }
+@media (max-width: 640px) {
+  input, select, textarea { font-size: 16px; }
+}
+button, a, [role="button"] { touch-action: manipulation; }
+.num { font-family: var(--font-mono); font-feature-settings: "tnum"; direction: ltr; unicode-bidi: embed; }
+.bg-grid-dark {
+  background-image: linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px);
+  background-size: 34px 34px;
+}
+.pt-safe { padding-top: env(safe-area-inset-top); }
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+
+/* خريطة العمليات: نسب أبعاد متجاوبة — مربوطة ومقروءة على الجوال، عريضة على الحاسوب */
+.ops-map { aspect-ratio: 4 / 3.2; min-height: 0; }
+@media (min-width: 768px) {
+  .ops-map { aspect-ratio: 16 / 7.5; min-height: 220px; }
+}
