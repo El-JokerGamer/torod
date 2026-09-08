@@ -20,6 +20,45 @@ export function Barcode({ code, className = 'h-14' }: { code: string; className?
   );
 }
 
+// ── فحص توفر الكاميرا (تتطلب HTTPS / Secure Context) ──
+function getCameraError(): string | null {
+  // الموقع يجب أن يكون على HTTPS أو localhost
+  const isSecure = window.isSecureContext;
+  if (!isSecure) {
+    return 'الكاميرا تتطلب اتصال آمن (HTTPS). تأكد من فتح الموقع عبر HTTPS وليس HTTP.';
+  }
+  // فحص وجود API الكاميرا
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    return 'متصفحك لا يدعم الوصول إلى الكاميرا. جرّب متصفح آخر مثل Chrome أو Firefox.';
+  }
+  return null;
+}
+
+// ── الحصول على stream الكاميرا مع fallback ──
+async function getCameraStream(): Promise<MediaStream> {
+  // محاولة أولاً مع mediaDevices (الحديث)
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    return navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 } },
+      audio: false,
+    });
+  }
+  // fallback للـ API القديم (deprecated لكن قد يعمل)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const legacyGetUserMedia = (navigator as any).getUserMedia || (navigator as any).webkitGetUserMedia || (navigator as any).mozGetUserMedia;
+  if (legacyGetUserMedia) {
+    return new Promise((resolve, reject) => {
+      legacyGetUserMedia.call(
+        navigator,
+        { video: { facingMode: 'environment' }, audio: false },
+        (stream: MediaStream) => resolve(stream),
+        (err: Error) => reject(err)
+      );
+    });
+  }
+  throw new Error('Camera API not available');
+}
+
 // ── مسح بالكاميرا عبر BarcodeDetector — بدون إدخال يدوي ──
 export function CameraScanModal({ open, onClose, expected, title, verb, onDone }: {
   open: boolean;
@@ -31,6 +70,7 @@ export function CameraScanModal({ open, onClose, expected, title, verb, onDone }
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [phase, setPhase] = useState<'starting' | 'live' | 'mismatch' | 'success' | 'nocam'>('starting');
+  const [camError, setCamError] = useState<string>('الكاميرا غير متاحة أو غير مدعومة في هذا المتصفح');
   const doneRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef(0);
@@ -52,6 +92,14 @@ export function CameraScanModal({ open, onClose, expected, title, verb, onDone }
     doneRef.current = false;
     setPhase('starting');
 
+    // فحص مسبق لتوفر الكاميرا
+    const preCheck = getCameraError();
+    if (preCheck) {
+      setCamError(preCheck);
+      setPhase('nocam');
+      return;
+    }
+
     const detector: { detect: (v: HTMLVideoElement) => Promise<{ rawValue: string }[]> } | null =
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       typeof (window as any).BarcodeDetector !== 'undefined' ? new (window as any).BarcodeDetector({ formats: ['code_39', 'code_128', 'qr_code', 'ean_13'] }) : null;
@@ -59,9 +107,7 @@ export function CameraScanModal({ open, onClose, expected, title, verb, onDone }
     let cancelled = false;
     (async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal: 1280 } }, audio: false,
-        });
+        const stream = await getCameraStream();
         if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
         streamRef.current = stream;
         const video = videoRef.current;
@@ -88,8 +134,54 @@ export function CameraScanModal({ open, onClose, expected, title, verb, onDone }
           rafRef.current = requestAnimationFrame(() => void loop());
         };
         void loop();
-      } catch {
-        if (!cancelled) setPhase('nocam');
+      } catch (err) {
+        if (!cancelled) {
+          // تحديد سبب الخطأ بدقة
+          const error = err as DOMException;
+          if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+            setCamError('تم رفض إذن الكاميرا. اضغط على أيقونة القفل 🔒 في شريط العنوان واسمح بالكاميرا.');
+          } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+            setCamError('لا توجد كاميرا متصلة بالجهاز.');
+          } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+            setCamError('الكاميرا مشغولة من تطبيق آخر. أغلق التطبيقات الأخرى وحاول مرة أخرى.');
+          } else if (error.name === 'OverconstrainedError') {
+            // حاول بدون قيود
+            try {
+              const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+              if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
+              streamRef.current = stream;
+              const video = videoRef.current;
+              if (video) {
+                video.srcObject = stream;
+                await video.play().catch(() => {});
+              }
+              setPhase('live');
+              const loop = async () => {
+                if (cancelled || doneRef.current) return;
+                const v = videoRef.current;
+                if (v && detector && v.readyState >= 2) {
+                  try {
+                    const codes = await detector.detect(v);
+                    const hit = codes.find((c) => expectedList.includes((c.rawValue || '').trim().toUpperCase()));
+                    if (hit) { finish(hit.rawValue.trim()); return; }
+                    if (codes.length) {
+                      setPhase('mismatch');
+                      setTimeout(() => setPhase((p) => (p === 'mismatch' ? 'live' : p)), 700);
+                    }
+                  } catch { /* */ }
+                }
+                rafRef.current = requestAnimationFrame(() => void loop());
+              };
+              void loop();
+              return;
+            } catch {
+              setCamError('تعذّر تشغيل الكاميرا. تأكد من الصلاحيات والمعدات.');
+            }
+          } else {
+            setCamError(`تعذّر الوصول للكاميرا: ${error.message || 'خطأ غير معروف'}`);
+          }
+          setPhase('nocam');
+        }
       }
     })();
 
@@ -128,7 +220,7 @@ export function CameraScanModal({ open, onClose, expected, title, verb, onDone }
           {phase === 'nocam' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-400 z-10 px-6 text-center">
               <Camera className="w-8 h-8 text-slate-500" />
-              <span className="text-[11px] font-bold leading-5">الكاميرا غير متاحة أو غير مدعومة في هذا المتصفح</span>
+              <span className="text-[11px] font-bold leading-5">{camError}</span>
             </div>
           )}
           {phase === 'mismatch' && (
@@ -169,16 +261,31 @@ export function PodCapture({ pod, onPod }: { pod: string | null; onPod: (p: stri
 
   const openCam = async () => {
     setErr('');
+    // فحص مسبق
+    const preCheck = getCameraError();
+    if (preCheck) {
+      setErr(preCheck);
+      return;
+    }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+      const stream = await getCameraStream();
       streamRef.current = stream;
       setMode('cam');
       setTimeout(async () => {
         const v = videoRef.current;
         if (v && streamRef.current) { v.srcObject = streamRef.current; await v.play().catch(() => {}); }
       }, 60);
-    } catch {
-      setErr('تعذّر فتح الكاميرا — تأكد من السماح بالوصول إليها');
+    } catch (err) {
+      const error = err as DOMException;
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        setErr('تم رفض إذن الكاميرا. اضغط على أيقونة القفل 🔒 في شريط العنوان واسمح بالكاميرا.');
+      } else if (error.name === 'NotFoundError') {
+        setErr('لا توجد كاميرا متصلة بالجهاز.');
+      } else if (error.name === 'NotReadableError') {
+        setErr('الكاميرا مشغولة من تطبيق آخر. أغلق التطبيقات الأخرى وحاول مرة أخرى.');
+      } else {
+        setErr(`تعذّر فتح الكاميرا: ${error.message || 'تأكد من السماح بالوصول إليها'}`);
+      }
     }
   };
 
