@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* القواعد الأساسية */
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #eef0ec;
+}
+
 @theme {
   --font-display: "Changa", "IBM Plex Sans Arabic", sans-serif;
   --font-body: "IBM Plex Sans Arabic", system-ui, sans-serif;
