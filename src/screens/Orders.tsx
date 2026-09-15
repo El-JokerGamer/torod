@@ -52,7 +52,6 @@ export default function Orders() {
 
   return (
     <div className="space-y-3">
-      {/* شريط الأدوات */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-52 max-w-sm">
           <span className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400"><Search className="w-4 h-4" /></span>
@@ -74,7 +73,6 @@ export default function Orders() {
         )}
       </div>
 
-      {/* رقائق الحالات */}
       <div className="flex flex-wrap gap-1.5">
         <Chip active={statusF === 'all'} onClick={() => setStatusF('all')} count={base.length}>الكل</Chip>
         {STATUS_FLOW.map((s) => counts(s) > 0 && (
@@ -85,7 +83,6 @@ export default function Orders() {
         ))}
       </div>
 
-      {/* الجدول */}
       <Card pad={false}>
         {filtered.length === 0 ? (
           <Empty
@@ -126,9 +123,7 @@ export default function Orders() {
                     <td className="px-3 py-2.5 hidden lg:table-cell text-slate-600 text-xs">{db.hubs.find((h) => h.id === o.hubId)?.name ?? '—'}</td>
                     <td className="px-3 py-2.5">
                       {o.paymentType === 'online' ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-700 bg-sky-50 ring-1 ring-sky-600/25 rounded-full px-2 py-0.5">
-                          💳 أونلاين
-                        </span>
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-700 bg-sky-50 ring-1 ring-sky-600/25 rounded-full px-2 py-0.5">💳 أونلاين</span>
                       ) : o.cod > 0 ? (
                         <span className="num text-xs font-bold text-brand-700">{money(o.cod)}</span>
                       ) : (
@@ -153,45 +148,21 @@ export default function Orders() {
         )}
       </Card>
 
-      {/* التفاصيل */}
       {open && (
-        <OrderDrawer
-          order={open}
-          me={me}
-          onClose={() => setOpenId(null)}
-          onShowCode={() => setCodeFor(open)}
-          onAssign={() => setAssignFor(open)}
-          onDelete={() => setToDelete(open)}
-        />
+        <OrderDrawer order={open} me={me} onClose={() => setOpenId(null)} onShowCode={() => setCodeFor(open)} onAssign={() => setAssignFor(open)} onDelete={() => setToDelete(open)} />
       )}
-
-      {/* إنشاء */}
       {showNew && <NewOrderModal me={me} onClose={() => setShowNew(false)} />}
-
-      {/* حذف */}
-      <Confirm
-        open={!!toDelete}
-        onClose={() => setToDelete(null)}
-        onYes={() => { if (toDelete) { deleteOrder(me, toDelete.id); setOpenId(null); } }}
+      <Confirm open={!!toDelete} onClose={() => setToDelete(null)} onYes={() => { if (toDelete) { deleteOrder(me, toDelete.id); setOpenId(null); } }}
         title="حذف طلب نهائيًا"
-        msg={<>سيُحذف الطلب <b className="num" dir="ltr">{toDelete?.code}</b> الخاص بـ<b>{toDelete?.customer}</b> وكل سجله الزمني من قاعدة البيانات المشتركة. هذا الإجراء لا يمكن التراجع عنه.</>}
-      />
-
-      {/* إسناد */}
+        msg={<>سيُحذف الطلب <b className="num" dir="ltr">{toDelete?.code}</b> الخاص بـ<b>{toDelete?.customer}</b> وكل سجله الزمني من قاعدة البيانات المشتركة. هذا الإجراء لا يمكن التراجع عنه.</>} />
       {assignFor && <AssignModal order={assignFor} me={me} onClose={() => setAssignFor(null)} />}
-
-      {/* عرض كود التتبع للمندوب */}
       {codeFor && <ShowCodeModal order={codeFor} onClose={() => setCodeFor(null)} />}
     </div>
   );
 }
 
-// ── الدرج التفصيلي ──
 function OrderDrawer({ order, me, onClose, onShowCode, onAssign, onDelete }: {
-  order: Order; me: User; onClose: () => void;
-  onShowCode: () => void;
-  onAssign: () => void;
-  onDelete: () => void;
+  order: Order; me: User; onClose: () => void; onShowCode: () => void; onAssign: () => void; onDelete: () => void;
 }) {
   const db = useDB();
   const zone = zoneById(order.zoneId);
@@ -213,14 +184,12 @@ function OrderDrawer({ order, me, onClose, onShowCode, onAssign, onDelete }: {
           <div className="text-[11px] text-slate-400 mt-0.5">أُنشئ {fmtFull(order.createdAt)} · آخر تحديث {timeAgo(order.updatedAt)}</div>
         </div>
         <button onClick={onClose} className="text-slate-400 hover:text-white hover:bg-white/10 rounded-md p-1.5 transition-colors" aria-label="إغلاق">
-          <XIcon />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="w-5 h-5"><path d="M6 6l12 12M18 6 6 18" /></svg>
         </button>
       </header>
-
       <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
         <div className="grid gap-4 md:grid-cols-2 md:gap-5">
           <div className="space-y-4 min-w-0">
-            {/* بيانات العميل */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <InfoTile label="الهاتف" value={<span className="num" dir="ltr">{order.phone}</span>} />
               <InfoTile label="المنطقة" value={zone?.name ?? '—'} />
@@ -231,7 +200,6 @@ function OrderDrawer({ order, me, onClose, onShowCode, onAssign, onDelete }: {
               <div className="text-[11px] font-bold text-slate-500 mb-1">العنوان الكامل</div>
               <div className="text-sm font-semibold text-slate-800 leading-6">{order.address}</div>
             </div>
-
             {order.recipientName && (
               <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800 bg-emerald-50 ring-1 ring-emerald-200 rounded-md px-3 py-2.5">
                 <Check className="w-4 h-4" /> سلَّم المندوب الشحنة إلى: {order.recipientName}
@@ -249,16 +217,12 @@ function OrderDrawer({ order, me, onClose, onShowCode, onAssign, onDelete }: {
                 <img src={order.pod} alt="إثبات التسليم" className="w-full max-w-60 rounded-md ring-1 ring-slate-200" />
               </div>
             )}
-
-            {/* الباركود */}
             <div className="bg-white rounded-lg ring-1 ring-slate-900/8 p-4">
               <div className="text-[11px] font-bold text-slate-500 mb-2">ملصق التتبع</div>
               <Barcode code={order.code} className="h-12 max-w-72 mx-auto" />
             </div>
           </div>
-
           <div className="space-y-4 min-w-0">
-            {/* مراحل التتبع */}
             <div className="bg-white rounded-lg ring-1 ring-slate-900/8 p-4">
               <div className="text-[11px] font-bold text-slate-500 mb-3">مراحل التتبع ({path.length})</div>
               <ol>
@@ -280,8 +244,6 @@ function OrderDrawer({ order, me, onClose, onShowCode, onAssign, onDelete }: {
                 })}
               </ol>
             </div>
-
-            {/* السجل الزمني */}
             <div className="bg-white rounded-lg ring-1 ring-slate-900/8 p-4">
               <div className="text-[11px] font-bold text-slate-500 mb-3">السجل الزمني الكامل</div>
               <div className="space-y-2.5">
@@ -300,8 +262,6 @@ function OrderDrawer({ order, me, onClose, onShowCode, onAssign, onDelete }: {
           </div>
         </div>
       </div>
-
-      {/* لوحة الإجراءات */}
       <footer className="border-t border-slate-200 bg-white p-4 space-y-2 pb-safe">
         {isMgr && order.status === 'created' && (
           <ActionRow title="طلب جديد — أسنده لمندوب ليظهر في تطبيقه ويستلمه بمسح الكود">
@@ -312,9 +272,7 @@ function OrderDrawer({ order, me, onClose, onShowCode, onAssign, onDelete }: {
           <ActionRow title={`مُسند إلى ${courier?.name ?? 'المندوب'} — افتح كود التتبع ليمسحه من تطبيقه ويستلم الشحنة`}>
             <div className="flex gap-2">
               <Btn icon={<QrCode className="w-4 h-4" />} onClick={() => { openCodeForCourier(me, order.id); onShowCode(); }}>فتح كود التتبع للمندوب</Btn>
-              {isMgr && (
-                <Btn v="ghost" icon={<RefreshCw className="w-4 h-4" />} onClick={onAssign}>تغيير المندوب</Btn>
-              )}
+              {isMgr && <Btn v="ghost" icon={<RefreshCw className="w-4 h-4" />} onClick={onAssign}>تغيير المندوب</Btn>}
             </div>
           </ActionRow>
         )}
@@ -329,9 +287,7 @@ function OrderDrawer({ order, me, onClose, onShowCode, onAssign, onDelete }: {
             <Btn v="ghost" sm icon={<Trash2 className="w-4 h-4" />} className="text-red-600 hover:bg-red-50" onClick={onDelete}>حذف الطلب</Btn>
           </div>
         )}
-        {!isHubStaff && !isMgr && (
-          <p className="text-xs text-slate-500 text-center py-1">لا توجد إجراءات متاحة لدورك على هذه الحالة.</p>
-        )}
+        {!isHubStaff && !isMgr && <p className="text-xs text-slate-500 text-center py-1">لا توجد إجراءات متاحة لدورك على هذه الحالة.</p>}
         {isHubStaff && order.status !== 'assigned' && (
           <p className="text-xs text-slate-500 text-center py-1">
             {order.status === 'created' ? 'بانتظار إسناد المشرف للمندوب — بعدها تفتح كود التتبع ليستلمه.' : 'الشحنة الآن مع المندوب — المتابعة من تطبيقه.'}
@@ -344,12 +300,6 @@ function OrderDrawer({ order, me, onClose, onShowCode, onAssign, onDelete }: {
     </Drawer>
   );
 }
-
-const XIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-    <path d="M6 6l12 12M18 6 6 18" />
-  </svg>
-);
 
 const InfoTile = ({ label, value, highlight }: { label: string; value: React.ReactNode; highlight?: boolean }) => (
   <div className={`rounded-lg ring-1 p-3 ${highlight ? 'bg-brand-50 ring-brand-200' : 'bg-white ring-slate-900/8'}`}>
@@ -365,7 +315,6 @@ const ActionRow = ({ title, children }: { title: string; children: React.ReactNo
   </div>
 );
 
-// ── إنشاء طلب ──
 function NewOrderModal({ me, onClose }: { me: User; onClose: () => void }) {
   const db = useDB();
   const isHubStaff = me.role === 'hub';
@@ -373,7 +322,6 @@ function NewOrderModal({ me, onClose }: { me: User; onClose: () => void }) {
   const [f, setF] = useState({ customer: '', phone: '', address: '', zoneId: ZONES[8].id, cod: '', hubId: '', paymentType: 'cod' as 'cod' | 'online' });
   const [errs, setErrs] = useState<Record<string, string>>({});
   const [zoneChanged, setZoneChanged] = useState(false);
-
   const hubForZone = (zid: string) => myHubs.find((h) => h.zoneId === zid)?.id ?? myHubs[0]?.id ?? '';
   const zone = zoneById(f.zoneId);
   const previewCode = `${zone?.code}-${String((db.seq[zone?.code ?? ''] ?? 0) + 1).padStart(4, '0')}`;
@@ -390,18 +338,14 @@ function NewOrderModal({ me, onClose }: { me: User; onClose: () => void }) {
     if (f.paymentType === 'cod' && (Number.isNaN(cod) || cod < 0)) er.cod = 'قيمة غير صالحة';
     setErrs(er);
     if (Object.keys(er).length) return;
-    createOrder(me, {
-      customer: f.customer.trim(), phone: f.phone.trim(), address: f.address.trim(),
-      zoneId: f.zoneId, cod, hubId, paymentType: f.paymentType,
-    });
+    createOrder(me, { customer: f.customer.trim(), phone: f.phone.trim(), address: f.address.trim(), zoneId: f.zoneId, cod, hubId, paymentType: f.paymentType });
     onClose();
   };
 
   if (isHubStaff && myHubs.length === 0) {
     return (
       <Modal open onClose={onClose} title="طلب شحن جديد" w="max-w-md" icon={<Warehouse className="w-5 h-5" />}>
-        <Empty icon={<Warehouse className="w-8 h-8" strokeWidth={1.4} />} title="لست مربوطًا بأي مخزن"
-          sub="اطلب من مشرف العمليات ربطك بمخزن من شاشة المخازن لتتمكن من إنشاء الطلبات" />
+        <Empty icon={<Warehouse className="w-8 h-8" strokeWidth={1.4} />} title="لست مربوطًا بأي مخزن" sub="اطلب من مشرف العمليات ربطك بمخزن من شاشة المخازن لتتمكن من إنشاء الطلبات" />
       </Modal>
     );
   }
@@ -409,26 +353,14 @@ function NewOrderModal({ me, onClose }: { me: User; onClose: () => void }) {
   return (
     <Modal open onClose={onClose} title="طلب شحن جديد" w="max-w-xl"
       icon={<Plus className="w-5 h-5" />} desc="أنشئ شحنة جديدة — سيُولَّد لها كود تتبّع تلقائي ببادئة المنطقة"
-      footer={
-        <div className="flex justify-end gap-2">
-          <Btn type="button" v="ghost" onClick={onClose}>إلغاء</Btn>
-          <Btn type="submit" form="new-order-form" icon={<Plus className="w-4 h-4" />}>إنشاء الطلب</Btn>
-        </div>
-      }>
+      footer={<div className="flex justify-end gap-2"><Btn type="button" v="ghost" onClick={onClose}>إلغاء</Btn><Btn type="submit" form="new-order-form" icon={<Plus className="w-4 h-4" />}>إنشاء الطلب</Btn></div>}>
       <form id="new-order-form" onSubmit={submit} className="space-y-3.5">
         <FormSection label="بيانات العميل" />
         <div className="grid sm:grid-cols-2 gap-3.5">
-          <Field label="اسم العميل" req error={errs.customer}>
-            <Input value={f.customer} onChange={(e) => setF({ ...f, customer: e.target.value })} placeholder="مثال: سامح نبيل" />
-          </Field>
-          <Field label="رقم الهاتف" req error={errs.phone}>
-            <Input dir="ltr" className="num text-left" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder="01xxxxxxxxx" />
-          </Field>
+          <Field label="اسم العميل" req error={errs.customer}><Input value={f.customer} onChange={(e) => setF({ ...f, customer: e.target.value })} placeholder="مثال: سامح نبيل" /></Field>
+          <Field label="رقم الهاتف" req error={errs.phone}><Input dir="ltr" className="num text-left" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder="01xxxxxxxxx" /></Field>
         </div>
-        <Field label="العنوان التفصيلي" req error={errs.address}>
-          <Textarea value={f.address} onChange={(e) => setF({ ...f, address: e.target.value })} placeholder="الشارع، رقم العمارة، الدور، علامة مميزة…" />
-        </Field>
-
+        <Field label="العنوان التفصيلي" req error={errs.address}><Textarea value={f.address} onChange={(e) => setF({ ...f, address: e.target.value })} placeholder="الشارع، رقم العمارة، الدور، علامة مميزة…" /></Field>
         <FormSection label="التوجيه والتحصيل" />
         <div className="grid sm:grid-cols-2 gap-3.5">
           <Field label="منطقة التغطية" hint={`كود التتبع: ${previewCode}`}>
@@ -442,77 +374,28 @@ function NewOrderModal({ me, onClose }: { me: User; onClose: () => void }) {
             </Select>
           </Field>
         </div>
-
-        {/* عرض قيمة التوصيل للمنطقة المختارة */}
         {(() => {
           const route = db.routes.find((r) => r.zoneId === f.zoneId);
           const fee = route?.deliveryFee ?? 0;
           return fee > 0 ? (
             <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">💰</span>
-                <div>
-                  <div className="text-xs font-bold text-emerald-800">قيمة التوصيل لهذه المنطقة</div>
-                  <div className="text-[10px] text-emerald-600">تُضاف تلقائيًا عند إنشاء الطلب</div>
-                </div>
-              </div>
+              <div className="flex items-center gap-2"><span className="text-xl">💰</span><div><div className="text-xs font-bold text-emerald-800">قيمة التوصيل لهذه المنطقة</div><div className="text-[10px] text-emerald-600">تُضاف تلقائيًا عند إنشاء الطلب</div></div></div>
               <div className="num text-lg font-bold text-emerald-700">{money(fee)}</div>
             </div>
           ) : null;
         })()}
-
         <FormSection label="طريقة الدفع" />
         <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => setF({ ...f, paymentType: 'cod' })}
-            className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${
-              f.paymentType === 'cod'
-                ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-200'
-                : 'border-slate-200 bg-white hover:border-slate-300'
-            }`}
-          >
-            <span className="text-3xl">💵</span>
-            <div className="text-right">
-              <div className="font-bold text-sm">نقدي (COD)</div>
-              <div className="text-xs text-slate-500">التحصيل عند التسليم</div>
-            </div>
+          <button type="button" onClick={() => setF({ ...f, paymentType: 'cod' })} className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${f.paymentType === 'cod' ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-200' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+            <span className="text-3xl">💵</span><div className="text-right"><div className="font-bold text-sm">نقدي (COD)</div><div className="text-xs text-slate-500">التحصيل عند التسليم</div></div>
           </button>
-          <button
-            type="button"
-            onClick={() => setF({ ...f, paymentType: 'online', cod: '' })}
-            className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${
-              f.paymentType === 'online'
-                ? 'border-sky-500 bg-sky-50 ring-2 ring-sky-200'
-                : 'border-slate-200 bg-white hover:border-slate-300'
-            }`}
-          >
-            <span className="text-3xl">💳</span>
-            <div className="text-right">
-              <div className="font-bold text-sm">أونلاين</div>
-              <div className="text-xs text-slate-500">مدفوع مسبقًا</div>
-            </div>
+          <button type="button" onClick={() => setF({ ...f, paymentType: 'online', cod: '' })} className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${f.paymentType === 'online' ? 'border-sky-500 bg-sky-50 ring-2 ring-sky-200' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+            <span className="text-3xl">💳</span><div className="text-right"><div className="font-bold text-sm">أونلاين</div><div className="text-xs text-slate-500">مدفوع مسبقًا</div></div>
           </button>
         </div>
-
-        {f.paymentType === 'cod' && (
-          <Field label="قيمة التحصيل (COD)" error={errs.cod} hint="0 = بدون تحصيل">
-            <Input dir="ltr" className="num text-left" type="number" min={0} value={f.cod} onChange={(e) => setF({ ...f, cod: e.target.value })} placeholder="450" />
-          </Field>
-        )}
-
-        {f.paymentType === 'online' && (
-          <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 text-sm text-sky-800">
-            <div className="font-bold mb-1">💳 الدفع الأونلاين</div>
-            <div className="text-xs">هذا الطلب مدفوع مسبقًا ولن يظهر في حسابات التسوية النقدية.</div>
-          </div>
-        )}
-        {isHubStaff && (
-          <div className="flex items-center gap-2 text-[11px] font-semibold text-sky-800 bg-sky-50 ring-1 ring-sky-200 rounded-md px-3 py-2">
-            <Warehouse className="w-4 h-4 shrink-0" />
-            ستُنشأ الطلبات في {myHubs.length === 1 ? `مخزن ${myHubs[0].name} فقط` : `مخازنك المرتبطة (${myHubs.length})`}
-          </div>
-        )}
+        {f.paymentType === 'cod' && <Field label="قيمة التحصيل (COD)" error={errs.cod} hint="0 = بدون تحصيل"><Input dir="ltr" className="num text-left" type="number" min={0} value={f.cod} onChange={(e) => setF({ ...f, cod: e.target.value })} placeholder="450" /></Field>}
+        {f.paymentType === 'online' && <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 text-sm text-sky-800"><div className="font-bold mb-1">💳 الدفع الأونلاين</div><div className="text-xs">هذا الطلب مدفوع مسبقًا ولن يظهر في حسابات التسوية النقدية.</div></div>}
+        {isHubStaff && <div className="flex items-center gap-2 text-[11px] font-semibold text-sky-800 bg-sky-50 ring-1 ring-sky-200 rounded-md px-3 py-2"><Warehouse className="w-4 h-4 shrink-0" />ستُنشأ الطلبات في {myHubs.length === 1 ? `مخزن ${myHubs[0].name} فقط` : `مخازنك المرتبطة (${myHubs.length})`}</div>}
         <div className="flex items-center justify-between bg-slate-50 rounded-md px-3.5 py-2.5 ring-1 ring-slate-200">
           <span className="text-xs text-slate-500">كود تتابعي تلقائي ببادئة <b>{zone?.name}</b></span>
           <Badge className="bg-ink text-brand-300 ring-ink"><span className="num" dir="ltr">{previewCode}</span></Badge>
@@ -522,50 +405,29 @@ function NewOrderModal({ me, onClose }: { me: User; onClose: () => void }) {
   );
 }
 
-// ── عرض كود التتبع للمندوب ──
 function ShowCodeModal({ order, onClose }: { order: Order; onClose: () => void }) {
-  const courier = order.courierId ? undefined : undefined;
-  void courier;
   return (
-    <Modal open onClose={onClose} title={`كود تتبّع ${order.customer}`} w="max-w-md"
-      icon={<QrCode className="w-5 h-5" />} desc="اعرض هذا الملصق على المندوب ليمسحه من تطبيقه ويستلم الشحنة">
+    <Modal open onClose={onClose} title={`كود تتبّع ${order.customer}`} w="max-w-md" icon={<QrCode className="w-5 h-5" />} desc="اعرض هذا الملصق على المندوب ليمسحه من تطبيقه ويستلم الشحنة">
       <div className="text-center">
-        <div className="bg-white rounded-lg ring-1 ring-slate-200 p-5">
-          <Barcode code={order.code} className="h-16" />
-        </div>
-        <p className="text-xs text-slate-500 mt-3 leading-5">
-          الحالة ستنتقل تلقائيًا إلى «مُسلَّم للمندوب» بمجرد مسحه للكود من تطبيقه.
-        </p>
+        <div className="bg-white rounded-lg ring-1 ring-slate-200 p-5"><Barcode code={order.code} className="h-16" /></div>
+        <p className="text-xs text-slate-500 mt-3 leading-5">الحالة ستنتقل تلقائيًا إلى «مُسلَّم للمندوب» بمجرد مسحه للكود من تطبيقه.</p>
       </div>
     </Modal>
   );
 }
 
-// ── إسناد / تغيير مندوب ──
 function AssignModal({ order, me, onClose }: { order: Order; me: User; onClose: () => void }) {
   const db = useDB();
   const isReassign = order.status === 'assigned' && !!order.courierId;
   const [cid, setCid] = useState(order.courierId ?? '');
   const couriers = db.users.filter((u) => u.role === 'courier');
   const routeCouriers = db.routes.find((r) => r.zoneId === order.zoneId)?.courierIds ?? [];
-
-  const submit = () => {
-    if (!cid || cid === order.courierId) return;
-    assignCourier(me, order.id, cid);
-    onClose();
-  };
+  const submit = () => { if (!cid || cid === order.courierId) return; assignCourier(me, order.id, cid); onClose(); };
 
   return (
     <Modal open onClose={onClose} title={isReassign ? `تغيير مندوب ${order.code}` : `إسناد ${order.code} لمندوب`} w="max-w-md"
       icon={<Bike className="w-5 h-5" />} desc={isReassign ? 'اختر مندوبًا آخر لاستلام الشحنة' : 'اختر المندوب الذي سيستلم الشحنة ويوصّلها'}
-      footer={
-        <div className="flex justify-end gap-2">
-          <Btn v="ghost" onClick={onClose}>إلغاء</Btn>
-          <Btn disabled={!cid || cid === order.courierId} icon={<Check className="w-4 h-4" />} onClick={submit}>
-            {isReassign ? 'تأكيد التغيير' : 'تأكيد الإسناد'}
-          </Btn>
-        </div>
-      }>
+      footer={<div className="flex justify-end gap-2"><Btn v="ghost" onClick={onClose}>إلغاء</Btn><Btn disabled={!cid || cid === order.courierId} icon={<Check className="w-4 h-4" />} onClick={submit}>{isReassign ? 'تأكيد التغيير' : 'تأكيد الإسناد'}</Btn></div>}>
       {couriers.length === 0 ? (
         <Empty icon={<Bike className="w-8 h-8" strokeWidth={1.4} />} title="لا يوجد مندوبون" sub="أضف مندوبين من إدارة الفريق أولًا" />
       ) : (
@@ -574,23 +436,14 @@ function AssignModal({ order, me, onClose }: { order: Order; me: User; onClose: 
             const suggested = routeCouriers.includes(c.id);
             const active = db.orders.filter((o) => o.courierId === c.id && ['handed', 'on_way', 'arrived'].includes(o.status)).length;
             return (
-              <button
-                key={c.id}
-                onClick={() => setCid(c.id)}
-                className={`w-full flex items-center gap-3 rounded-lg ring-1 px-3 py-2.5 transition-all text-start ${cid === c.id ? 'ring-brand-500 bg-brand-50' : 'ring-slate-200 hover:ring-slate-300 bg-white'}`}
-              >
+              <button key={c.id} onClick={() => setCid(c.id)} className={`w-full flex items-center gap-3 rounded-lg ring-1 px-3 py-2.5 transition-all text-start ${cid === c.id ? 'ring-brand-500 bg-brand-50' : 'ring-slate-200 hover:ring-slate-300 bg-white'}`}>
                 <Avatar id={c.id} name={c.name} />
-                <span className="flex-1 min-w-0">
-                  <span className="block text-sm font-bold text-slate-800">{c.name}</span>
-                  <span className="block text-[11px] text-slate-500">{active} طلب نشط · {c.online ? 'متصل الآن' : 'غير متصل'}</span>
-                </span>
+                <span className="flex-1 min-w-0"><span className="block text-sm font-bold text-slate-800">{c.name}</span><span className="block text-[11px] text-slate-500">{active} طلب نشط · {c.online ? 'متصل الآن' : 'غير متصل'}</span></span>
                 <span className="flex items-center gap-1">
                   {order.courierId === c.id && <Badge className="bg-amber-50 text-amber-800 ring-amber-600/25">الحالي</Badge>}
                   {suggested && <Badge className="bg-petrol-100 text-petrol-700 ring-petrol-500/30">مندوب المنطقة</Badge>}
                 </span>
-                <span className={`w-4 h-4 rounded-full ring-2 flex items-center justify-center ${cid === c.id ? 'ring-brand-500 bg-brand-500' : 'ring-slate-300'}`}>
-                  {cid === c.id && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
-                </span>
+                <span className={`w-4 h-4 rounded-full ring-2 flex items-center justify-center ${cid === c.id ? 'ring-brand-500 bg-brand-500' : 'ring-slate-300'}`}>{cid === c.id && <Check className="w-3 h-3 text-white" strokeWidth={3} />}</span>
               </button>
             );
           })}

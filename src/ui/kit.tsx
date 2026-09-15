@@ -128,7 +128,6 @@ export function Modal({ open, onClose, title, desc, icon, children, w = 'max-w-l
   open: boolean; onClose: () => void; title: ReactNode; desc?: ReactNode; icon?: ReactNode;
   children: ReactNode; w?: string; tone?: 'danger'; footer?: ReactNode;
 }) {
-  // كشف الجوال: يُركَّب في document.body مباشرة ليتجاوز أي transform على أسلافه
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)');
@@ -148,23 +147,16 @@ export function Modal({ open, onClose, title, desc, icon, children, w = 'max-w-l
   const danger = tone === 'danger';
   const content = (
     <div className="fixed inset-0 z-50" role="dialog" aria-modal>
-      {/* حجاب: أدكن على الهاتف ليبرز الورقة كطبقة عائمة فوق المحتوى · فاتح على الكمبيوتر */}
       <div className="absolute inset-0 bg-ink/40 md:bg-paper/85 animate-fade" onClick={onClose} />
-
-      {/* لوحة القوائم: مثبّتة صراحةً بالحافة السفلية على الهاتف (ورقة سفلية بارتفاع المحتوى) · بجهة اليمين من الأعلى على الكمبيوتر */}
       <aside className={`absolute inset-x-0 bottom-0 max-h-[85dvh] bg-paper flex flex-col overflow-hidden rounded-t-2xl animate-fade-up
         md:inset-x-auto md:bottom-auto md:top-0 md:right-0 md:h-[93dvh] md:max-h-none md:w-[84%] lg:w-[66%] xl:w-1/2 md:min-w-[560px] md:max-w-[980px]
         md:rounded-t-none md:rounded-b-2xl md:rounded-l-2xl ring-1 ${danger ? 'ring-red-300/70' : 'ring-ink/10'}
         shadow-[0_-16px_50px_-12px_rgba(12,22,34,0.55)] md:shadow-[-24px_24px_80px_-24px_rgba(12,22,34,0.4)]
         md:animate-slide-in-right`}>
-        {/* شريط علوي بلون الهوية */}
         <div className={`h-1.5 shrink-0 ${danger ? 'bg-red-500' : 'bg-brand-600'}`} />
-
-        {/* مقبض سحب (جوال فقط) — يُشير إلى أن اللوحة ورقة سفلية */}
         <button onClick={onClose} className="md:hidden pt-2.5 pb-1 flex justify-center shrink-0" aria-label="إغلاق">
           <span className="w-10 h-1.5 rounded-full bg-slate-300" />
         </button>
-
         <header className={`flex items-center gap-3 sm:gap-3.5 px-4 sm:px-7 pt-2 sm:pt-5 pb-3 sm:pb-4 border-b shrink-0 ${danger ? 'border-red-100 bg-red-50/70' : 'border-slate-200/70 bg-white'}`}>
           {icon && (
             <span className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 shadow-md transition-transform duration-200 hover:scale-105
@@ -180,11 +172,9 @@ export function Modal({ open, onClose, title, desc, icon, children, w = 'max-w-l
             <X className="w-5 h-5" />
           </button>
         </header>
-
         <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-8 py-4 sm:py-5">
           <div className="w-full max-w-[700px] mx-auto">{children}</div>
         </div>
-
         {footer && (
           <footer className={`border-t px-4 sm:px-7 py-3 sm:py-4 shrink-0
             pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-4
@@ -200,7 +190,6 @@ export function Modal({ open, onClose, title, desc, icon, children, w = 'max-w-l
   return isMobile ? createPortal(content, document.body) : content;
 }
 
-/** فاصل قسم داخل نماذج الإدخال: أيقونة + عنوان + خط */
 export function FormSection({ label, icon }: { label: string; icon?: ReactNode }) {
   return (
     <div className="flex items-center gap-2 pt-2 first:pt-0">
@@ -216,7 +205,6 @@ export function FormSection({ label, icon }: { label: string; icon?: ReactNode }
 }
 
 export function Drawer({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
-  // كشف الجوال: يُركَّب في document.body مباشرة ليتجاوز أي transform على أسلافه
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)');
@@ -233,9 +221,7 @@ export function Drawer({ open, onClose, children }: { open: boolean; onClose: ()
   }, [open, onClose]);
   const content = (
     <div className={`fixed inset-0 z-50 ${open ? '' : 'pointer-events-none'}`} aria-hidden={!open}>
-      {/* حجاب: أدكن على الهاتف ليبرز الورقة كطبقة عائمة · فاتح على الكمبيوتر */}
       <div className={`absolute inset-0 bg-ink/40 md:bg-paper/85 transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0'}`} onClick={onClose} />
-      {/* هاتف: ورقة سفلية مثبّتة صراحةً بالحافة السفلية بارتفاع المحتوى · كمبيوتر: لوحة إجراءات بجهة اليمين من الأعلى — نفس تصميم قوائم الإدخال */}
       <aside className={`absolute inset-x-0 bottom-0 max-h-[85dvh] bg-paper flex flex-col overflow-hidden rounded-t-2xl
         md:inset-x-auto md:bottom-auto md:top-0 md:right-0 md:h-[93dvh] md:max-h-none md:w-[84%] lg:w-[66%] xl:w-1/2 md:min-w-[560px] md:max-w-[980px]
         md:rounded-t-none md:rounded-b-2xl md:rounded-l-2xl md:ring-1 md:ring-ink/10
