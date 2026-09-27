@@ -417,17 +417,7 @@ export function assignCourier(me: User, orderId: string, courierId: string) {
   toast('تم الإسناد — ظهر الطلب في تطبيق المندوب فورًا');
 }
 
-export function openCodeForCourier(me: User, orderId: string) {
-  const o = state.orders.find((x) => x.id === orderId);
-  if (!o) return;
-  if (me.role === 'hub' && !me.hubIds.includes(o.hubId)) return toast('هذا الطلب خارج مخازنك المرتبطة', 'error');
-  if (o.status !== 'assigned') return toast('أسند الطلب لمندوب أولًا ليتمكن من مسحه', 'error');
-  mutate((d) => {
-    const ord = d.orders.find((x) => x.id === orderId)!;
-    touch(ord, ev(me.name, `فتح كود التتبع ${o.code} للمندوب للاستلام`, 'info'));
-  });
-  toast(`اعرض الكود ${o.code} على المندوب ليمسحه من تطبيقه`, 'info');
-}
+
 
 export function markReturned(me: User, orderId: string) {
   if (!can(me, ['owner', 'ops'])) return toast('صلاحية غير كافية', 'error');
@@ -462,8 +452,8 @@ function courierAction(me: User, orderId: string, from: OrderStatus[], to: Order
   toast(label, kind === 'ok' ? 'success' : kind === 'warn' || kind === 'bad' ? 'warn' : 'info');
 }
 
-export const courierScanReceive = (me: User, orderId: string) =>
-  courierAction(me, orderId, ['assigned'], 'handed', 'استلام الشحنة من المخزن (مسح باركود)', 'ok');
+export const courierReceive = (me: User, orderId: string) =>
+  courierAction(me, orderId, ['assigned'], 'handed', 'استلام الشحنة من المخزن', 'ok');
 export const courierOnWay = (me: User, orderId: string) =>
   courierAction(me, orderId, ['handed'], 'on_way', 'التحرك نحو العميل');
 export const courierArrived = (me: User, orderId: string) =>

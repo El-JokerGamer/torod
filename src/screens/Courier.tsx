@@ -4,14 +4,14 @@ import {
   ChevronDown, Warehouse, Bike, MessageSquare, Lock,
 } from 'lucide-react';
 import {
-  useDB, useMe, logout, toggleOnline, courierScanReceive, courierOnWay, courierArrived, courierDeliver,
+  useDB, useMe, logout, toggleOnline, courierReceive, courierOnWay, courierArrived, courierDeliver,
   courierFail, addIssue, chatOnIssue, toast,
 } from '../lib/store';
 import { STATUS_META, FAIL_REASONS, ISSUE_TYPES, ISSUE_STATUSES, zoneById, money, timeAgo } from '../lib/data';
 import type { Issue, IssueType, Order, Priority, User } from '../lib/data';
 import { Btn, Modal, Field, Input, Select, Textarea, Badge, CodeChip, Empty, AppIcon, PriorityBadge } from '../ui/kit';
 import { LiveMap } from '../ui/map';
-import { CameraScanModal, PodCapture } from '../ui/camera';
+import { PodCapture } from '../ui/camera';
 
 type Tab = 'tasks' | 'issues' | 'done';
 
@@ -20,8 +20,7 @@ export default function CourierApp() {
   const me = useMe()!;
   const [tab, setTab] = useState<Tab>('tasks');
   const [mapOpen, setMapOpen] = useState(true);
-  const [scanFor, setScanFor] = useState<Order | null>(null);
-  const [scanReceiveOpen, setScanReceiveOpen] = useState(false);
+  const [receiveFor, setReceiveFor] = useState<Order | null>(null);
   const [deliverFor, setDeliverFor] = useState<Order | null>(null);
   const [failFor, setFailFor] = useState<Order | null>(null);
   const [showIssue, setShowIssue] = useState(false);
@@ -112,8 +111,8 @@ export default function CourierApp() {
             <>
               {toReceive.length > 0 && (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-[11px] font-bold text-amber-300"><Warehouse className="w-4 h-4" />مُسندة إليك — امسح الباركود للاستلام من المخزن</div>
-                  {toReceive.map((o, i) => <PickupCard key={o.id} order={o} index={i} disabled={!me.online} onScan={() => setScanFor(o)} />)}
+                  <div className="flex items-center gap-2 text-[11px] font-bold text-amber-300"><Warehouse className="w-4 h-4" />مُسندة إليك — اضغط استلام لاستلام الشحنة من المخزن</div>
+                  {toReceive.map((o, i) => <PickupCard key={o.id} order={o} index={i} disabled={!me.online} onReceive={() => setReceiveFor(o)} />)}
                 </div>
               )}
               {active.length === 0 && toReceive.length === 0 && <Empty icon={<Bike className="w-8 h-8" strokeWidth={1.4} />} title="لا مهام نشطة الآن" sub="عندما تُسند إليك شحنات جديدة ستظهر هنا فورًا" />}
@@ -150,20 +149,19 @@ export default function CourierApp() {
           )}
         </main>
 
-        {tab === 'tasks' && (
+        {tab === 'tasks' && toReceive.length > 0 && (
           <div className="sticky bottom-0 p-3 bg-gradient-to-t from-ink-2 via-ink-2/95 to-transparent pb-safe">
-            <button onClick={() => { if (!me.online) { toast('اتصل أولًا لاستلام الأوردرات', 'warn'); return; } setScanReceiveOpen(true); }}
-              className={`relative w-full flex items-center justify-center gap-2.5 rounded-xl px-4 py-3.5 font-display font-bold text-[15px] transition-all duration-200 active:scale-[0.98] ${toReceive.length > 0 && me.online ? 'bg-brand-600 text-white shadow-lg shadow-brand-600/40 hover:bg-brand-500' : 'bg-white/5 text-slate-400 ring-1 ring-white/10'}`}>
-              {toReceive.length > 0 && me.online && (<><span className="absolute inset-0 rounded-xl ring-2 ring-brand-400 animate-ping-soft pointer-events-none" /><span className="num absolute -top-2 -end-2 w-6 h-6 rounded-full bg-amber-400 text-ink text-[11px] font-bold flex items-center justify-center ring-2 ring-ink-2 shadow">{toReceive.length}</span></>)}
-              <Camera className="w-5 h-5" />{toReceive.length > 0 ? 'استلام أوردر — امسح كود التتبع' : 'استلام أوردر'}
+            <button onClick={() => { if (!me.online) { toast('اتصل أولًا لاستلام الأوردرات', 'warn'); return; } setReceiveFor(toReceive[0]); }}
+              className={`relative w-full flex items-center justify-center gap-2.5 rounded-xl px-4 py-3.5 font-display font-bold text-[15px] transition-all duration-200 active:scale-[0.98] ${me.online ? 'bg-brand-600 text-white shadow-lg shadow-brand-600/40 hover:bg-brand-500' : 'bg-white/5 text-slate-400 ring-1 ring-white/10'}`}>
+              {me.online && (<><span className="absolute inset-0 rounded-xl ring-2 ring-brand-400 animate-ping-soft pointer-events-none" /><span className="num absolute -top-2 -end-2 w-6 h-6 rounded-full bg-amber-400 text-ink text-[11px] font-bold flex items-center justify-center ring-2 ring-ink-2 shadow">{toReceive.length}</span></>)}
+              <Check className="w-5 h-5" />استلام الشحنة
             </button>
           </div>
         )}
       </div>
 
       {openChat && <IssueChatScreen issue={openChat} me={me} onClose={() => setChatFor(null)} />}
-      {scanReceiveOpen && <CameraScanModal open onClose={() => setScanReceiveOpen(false)} expected={toReceive.map((o) => o.code)} title="استلام أوردر — مسح كود التتبع" verb="مسح ملصق الشحنة" onDone={(code) => { const match = toReceive.find((o) => o.code.toUpperCase() === code.toUpperCase()); if (match) courierScanReceive(me, match.id); }} />}
-      {scanFor && <CameraScanModal open onClose={() => setScanFor(null)} expected={scanFor.code} title="استلام الشحنة من المخزن" verb="مسح ملصق الشحنة" onDone={(code) => { if (code.toUpperCase() === scanFor.code.toUpperCase()) courierScanReceive(me, scanFor.id); }} />}
+      {receiveFor && <ReceiveConfirmModal order={receiveFor} me={me} onClose={() => setReceiveFor(null)} />}
       {deliverFor && <DeliverModal order={deliverFor} me={me} onClose={() => setDeliverFor(null)} />}
       {failFor && <FailModal order={failFor} me={me} onClose={() => setFailFor(null)} />}
       {showIssue && <FieldIssueModal me={me} onClose={() => setShowIssue(false)} />}
@@ -171,14 +169,55 @@ export default function CourierApp() {
   );
 }
 
-function PickupCard({ order, index, onScan, disabled }: { order: Order; index: number; onScan: () => void; disabled?: boolean }) {
+function PickupCard({ order, index, onReceive, disabled }: { order: Order; index: number; onReceive: () => void; disabled?: boolean }) {
   const zone = zoneById(order.zoneId);
   return (
     <article className="bg-amber-500/[0.07] ring-1 ring-amber-500/30 rounded-xl p-4 animate-fade-up" style={{ animationDelay: `${Math.min(index, 6) * 50}ms` }}>
       <div className="flex items-center gap-2 flex-wrap"><CodeChip code={order.code} /><Badge className="bg-amber-500/15 text-amber-300 ring-amber-500/30">بانتظار الاستلام</Badge>{order.cod > 0 && <span className="ms-auto num text-xs font-bold text-brand-300">{money(order.cod)}</span>}</div>
       <div className="mt-2"><div className="font-bold text-[15px]">{order.customer}</div><p className="text-[12px] text-slate-400 mt-0.5 flex items-start gap-1.5"><MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-400" />{order.address} — {zone?.name}</p></div>
-      <Btn className="w-full mt-3" v="dark" disabled={disabled} icon={<Camera className="w-4 h-4" />} onClick={onScan}>مسح الباركود للاستلام</Btn>
+      <Btn className="w-full mt-3" v="dark" disabled={disabled} icon={<Check className="w-4 h-4" />} onClick={onReceive}>استلام الشحنة</Btn>
     </article>
+  );
+}
+
+// ── نافذة تأكيد الاستلام ──
+function ReceiveConfirmModal({ order, me, onClose }: { order: Order; me: User; onClose: () => void }) {
+  const zone = zoneById(order.zoneId);
+  const submit = () => {
+    courierReceive(me, order.id);
+    onClose();
+  };
+  return (
+    <Modal open onClose={onClose} title="تأكيد استلام الشحنة" w="max-w-md"
+      icon={<Check className="w-5 h-5" />} desc="تأكد من استلام الشحنة فعليًا من المخزن">
+      <div className="space-y-4">
+        <div className="bg-white rounded-lg ring-1 ring-slate-200 p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <CodeChip code={order.code} />
+            <Badge className="bg-amber-50 text-amber-800 ring-amber-600/25">بانتظار الاستلام</Badge>
+          </div>
+          <div className="font-bold text-lg text-slate-800">{order.customer}</div>
+          <div className="text-sm text-slate-600 flex items-center gap-1.5">
+            <MapPin className="w-4 h-4 text-brand-500" />
+            {order.address} — {zone?.name}
+          </div>
+          {order.cod > 0 && (
+            <div className="flex items-center justify-between bg-brand-50 ring-1 ring-brand-200 rounded-md px-3 py-2 mt-2">
+              <span className="text-xs font-bold text-brand-800">قيمة التحصيل</span>
+              <span className="num font-bold text-brand-700">{money(order.cod)}</span>
+            </div>
+          )}
+        </div>
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm text-emerald-800">
+          <div className="font-bold mb-1">✅ تأكيد الاستلام</div>
+          <div className="text-xs">بضغطك على "تأكيد الاستلام" أنت تُقر باستلام الشحنة فعليًا من المخزن وستنتقل الحالة إلى "مُسلَّم للمندوب".</div>
+        </div>
+      </div>
+      <div className="flex justify-end gap-2 mt-4">
+        <Btn v="ghost" onClick={onClose}>إلغاء</Btn>
+        <Btn v="success" icon={<Check className="w-4 h-4" />} onClick={submit}>تأكيد الاستلام</Btn>
+      </div>
+    </Modal>
   );
 }
 
