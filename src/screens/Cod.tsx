@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { Search, Bike, FileText, Check, Plus, Minus, Banknote } from 'lucide-react';
-import { useDB, useMe, courierCollected, createSettlement } from '../lib/store';
+import { Search, Bike, FileText, Check, Clock, Plus, Minus, Banknote } from 'lucide-react';
+import { useDB, useMe, courierCollected, createSettlement, settleSettlement } from '../lib/store';
 import { money, fmtFull, timeAgo } from '../lib/data';
-import type { User } from '../lib/data';
-import { Btn, Card, Modal, Field, Input, Empty, Avatar, Badge } from '../ui/kit';
+import type { User, Settlement } from '../lib/data';
+import { Btn, Card, Modal, Field, Input, Empty, Avatar, Badge, Confirm } from '../ui/kit';
 
 export default function Cod() {
   const db = useDB();
   const me = useMe()!;
   const [settleFor, setSettleFor] = useState<User | null>(null);
+  const [toSettle, setToSettle] = useState<Settlement | null>(null);
   const [q, setQ] = useState('');
   const canSettle = ['owner', 'finance'].includes(me.role);
   const needle = q.trim().toLowerCase();
@@ -16,9 +17,26 @@ export default function Cod() {
   const couriers = allCouriers.filter((c) => !needle || c.name.toLowerCase().includes(needle) || c.username.toLowerCase().includes(needle));
   const settlements = db.settlements.filter((s) => { if (!needle) return true; const c = db.users.find((u) => u.id === s.courierId); return (c?.name.toLowerCase().includes(needle) ?? false) || (c?.username.toLowerCase().includes(needle) ?? false); });
   const codOrders = db.orders.filter((o) => o.paymentType === 'cod');
-  const totalCollected = codOrders.filter((o) => o.status === 'delivered').reduce((s, o) => s + o.cod, 0);
-  const totalPending = allCouriers.reduce((s, c) => s + courierCollected({ ...db, orders: codOrders }, c.id).amount, 0);
-  const settledSum = db.settlements.filter((s) => s.status === 'settled').reduce((s, x) => s + x.net, 0);
+  
+  // حساب المبالغ بشكل صحيح:
+  // 1. إجمالي المُحصَّل = الطلبات المسلّمة التي تم اعتماد تسويتها
+  const totalCollected = db.settlements
+    .filter(s => s.status === 'settled')
+    .reduce((sum, s) => sum + s.net, 0);
+  
+  // 2. معلّق لدى المندوبين = الطلبات المسلّمة التي لم يتم تسويتها بعد
+  const settledOrderIds = new Set(db.settlements.flatMap(s => s.orderIds));
+  const totalPending = codOrders
+    .filter(o => o.status === 'delivered' && !settledOrderIds.has(o.id))
+    .reduce((sum, o) => sum + o.cod, 0);
+  
+  // 3. تسويات معتمدة = مجموع التسويات المعتمدة
+  const settledSum = db.settlements
+    .filter(s => s.status === 'settled')
+    .reduce((sum, s) => sum + s.net, 0);
+  
+  // 4. تسويات بانتظار الاعتماد
+  const pendingSettlements = db.settlements.filter(s => s.status === 'pending');
   return (
     <div className="space-y-4">
       <div className="bg-ink text-white rounded-xl p-5 grid grid-cols-1 sm:grid-cols-3 gap-4 relative overflow-hidden">
@@ -69,10 +87,11 @@ export default function Cod() {
         {settlements.length === 0 ? <Empty icon={<FileText className="w-8 h-8" strokeWidth={1.4} />} title={needle ? 'لا تسويات تطابق البحث' : 'لا توجد تسويات بعد'} sub={needle ? 'جرّب اسم مندوب آخر' : 'أنشئ أول تسوية من بطاقة المندوب أعلاه'} /> : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[680px]">
-              <thead><tr className="text-[11px] text-slate-500 bg-slate-50 border-b border-slate-100"><th className="text-start font-bold px-4 py-2.5">المندوب</th><th className="text-start font-bold px-3 py-2.5">التاريخ</th><th className="text-start font-bold px-3 py-2.5">الطلبات</th><th className="text-start font-bold px-3 py-2.5">المحصَّل</th><th className="text-start font-bold px-3 py-2.5 hidden md:table-cell">الرسوم</th><th className="text-start font-bold px-3 py-2.5">الصافي</th><th className="text-start font-bold px-3 py-2.5">الحالة</th>{canSettle && <th className="px-3 py-2.5" />}</tr></thead>
+              <thead><tr className="text-[11px] text-slate-500 bg-slate-50 border-b border-slate-100"><th className="text-start font-bold px-4 py-2.5">المندوب</th><th className="text-start font-bold px-3 py-2.5">التاريخ</th><th className="text-start font-bold px-3 py-2.5">الطلبات</th><th className="text-start font-bold px-3 py-2.5">المحصَّل</th><th className="text-start font-bold px-3 py-2.5 hidden md:table-cell">الرسوم</th><th className="text-start font-bold px-3 py-2.5 hidden md:table-cell">التعديلات</th><th className="text-start font-bold px-3 py-2.5">الصافي</th><th className="text-start font-bold px-3 py-2.5">الحالة</th>{canSettle && <th className="px-3 py-2.5" />}</tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {settlements.map((s) => {
                   const c = db.users.find((u) => u.id === s.courierId);
+                  const adjTotal = s.adjustments.reduce((sum, a) => sum + a.amount, 0);
                   return (
                     <tr key={s.id} className="hover:bg-brand-50/40 transition-colors">
                       <td className="px-4 py-2.5"><span className="flex items-center gap-2 font-bold text-slate-800">{c ? <Avatar id={c.id} name={c.name} size="w-6 h-6 text-[9px]" /> : null}{c?.name ?? 'مندوب محذوف'}</span></td>
@@ -80,8 +99,29 @@ export default function Cod() {
                       <td className="px-3 py-2.5 num text-xs text-slate-600">{s.orderIds.length}</td>
                       <td className="px-3 py-2.5 num font-bold text-slate-800">{money(s.base)}</td>
                       <td className="px-3 py-2.5 num text-xs text-red-600 hidden md:table-cell">- {money(s.fees)}</td>
+                      <td className="px-3 py-2.5 num text-xs hidden md:table-cell">
+                        {adjTotal !== 0 && (
+                          <span className={adjTotal > 0 ? 'text-emerald-600' : 'text-red-600'}>
+                            {adjTotal > 0 ? '+' : ''}{money(adjTotal)}
+                          </span>
+                        )}
+                        {adjTotal === 0 && <span className="text-slate-400">—</span>}
+                      </td>
                       <td className="px-3 py-2.5 num font-bold text-brand-700">{money(s.net)}</td>
-                      <td className="px-3 py-2.5"><Badge className="bg-emerald-50 text-emerald-700 ring-emerald-600/25"><Check className="w-3 h-3" /> معتمدة</Badge></td>
+                      <td className="px-3 py-2.5">
+                        {s.status === 'settled' ? (
+                          <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-600/25"><Check className="w-3 h-3" /> معتمدة</Badge>
+                        ) : (
+                          <Badge className="bg-amber-50 text-amber-800 ring-amber-600/25"><Clock className="w-3 h-3" /> بانتظار الاعتماد</Badge>
+                        )}
+                      </td>
+                      {canSettle && (
+                        <td className="px-3 py-2.5 text-end">
+                          {s.status === 'pending' && (
+                            <Btn sm v="success" icon={<Check className="w-3.5 h-3.5" />} onClick={() => setToSettle(s)}>اعتماد</Btn>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -90,7 +130,26 @@ export default function Cod() {
           </div>
         )}
       </Card>
+      
+      {pendingSettlements.length > 0 && canSettle && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+          <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-sm text-amber-800">
+            <div className="font-bold mb-1">⏳ تسويات بانتظار الاعتماد</div>
+            <div className="text-xs">يوجد {pendingSettlements.length} تسوية بانتظار الاعتماد بقيمة إجمالية {money(pendingSettlements.reduce((sum, s) => sum + s.net, 0))}</div>
+          </div>
+        </div>
+      )}
+      
       {settleFor && <SettlementModal courier={settleFor} me={me} onClose={() => setSettleFor(null)} />}
+      <Confirm 
+        open={!!toSettle} 
+        onClose={() => setToSettle(null)} 
+        onYes={() => toSettle && settleSettlement(me, toSettle.id)} 
+        title="اعتماد التسوية" 
+        msg={<>اعتماد تسوية <b>{db.users.find((u) => u.id === toSettle?.courierId)?.name}</b> بصافي <b className="num">{money(toSettle?.net ?? 0)}</b>؟ بعد الاعتماد ستُضاف إلى إجمالي المُحصَّل.</>} 
+        yes="اعتماد التسوية" 
+      />
     </div>
   );
 }
@@ -113,15 +172,58 @@ function SettlementModal({ courier, me, onClose }: { courier: User; me: User; on
         <div className="flex justify-between text-sm font-bold border-t border-white/10 mt-2 pt-2"><span>إجمالي المحصَّل</span><span className="num text-brand-300">{money(col.amount)}</span></div>
       </div>
       <div className="space-y-3.5">
-        <Field label="رسوم الخدمة (خصم)" hint="تُخصم من إجمالي المحصَّل"><Input dir="ltr" type="number" min={0} className="num text-left" value={fees} onChange={(e) => setFees(e.target.value)} /></Field>
+        <Field label="رسوم الخدمة (خصم)" hint="تُخصم من إجمالي المحصَّل">
+          <Input dir="ltr" type="number" min={0} className="num text-left" value={fees} onChange={(e) => setFees(e.target.value)} />
+        </Field>
         <div>
-          <div className="flex items-center justify-between mb-1.5"><span className="text-xs font-semibold text-slate-600">تعديلات (بدلات / جزاءات)</span><Btn sm v="ghost" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAdjs([...adjs, { label: '', amount: '' }])}>إضافة سطر</Btn></div>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-semibold text-slate-600">تعديلات (بدلات / جزاءات)</span>
+            <Btn sm v="ghost" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAdjs([...adjs, { label: '', amount: '' }])}>إضافة سطر</Btn>
+          </div>
           <div className="space-y-1.5">
-            {adjs.map((a, i) => <div key={i} className="flex gap-2 items-center"><Input placeholder="البيان (بدل وقود…)" value={a.label} onChange={(e) => setAdjs(adjs.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} /><Input dir="ltr" type="number" placeholder="±" className="num text-left w-28" value={a.amount} onChange={(e) => setAdjs(adjs.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)))} /><button onClick={() => setAdjs(adjs.filter((_, j) => j !== i))} className="text-slate-400 hover:text-red-600 p-1" aria-label="حذف السطر"><Minus className="w-4 h-4" /></button></div>)}
+            {adjs.map((a, i) => (
+              <div key={i} className="flex gap-2 items-center">
+                <Input placeholder="البيان (بدل وقود…)" value={a.label} onChange={(e) => setAdjs(adjs.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
+                <Input dir="ltr" type="number" placeholder="±" className="num text-left w-28" value={a.amount} onChange={(e) => setAdjs(adjs.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)))} />
+                <button onClick={() => setAdjs(adjs.filter((_, j) => j !== i))} className="text-slate-400 hover:text-red-600 p-1" aria-label="حذف السطر"><Minus className="w-4 h-4" /></button>
+              </div>
+            ))}
             {adjs.length === 0 && <p className="text-[11px] text-slate-400">لا تعديلات — الصافي = المحصَّل − الرسوم.</p>}
           </div>
         </div>
-        <div className="bg-ink text-white rounded-lg p-4 flex items-center justify-between"><div><div className="text-[10px] text-slate-400 font-bold">الصافي المستحق للمندوب</div><div className="text-[11px] text-slate-500 num" dir="ltr">{col.amount} − {feesN} + {adjN}</div></div><div className="num font-display text-2xl font-bold text-brand-300">{money(net)}</div></div>
+        
+        {/* ملخص الحساب */}
+        <div className="bg-slate-50 rounded-lg p-4 space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-600">المبلغ المحصَّل:</span>
+            <span className="num font-bold text-slate-800">{money(col.amount)}</span>
+          </div>
+          {feesN > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-600">رسوم الخدمة:</span>
+              <span className="num font-bold text-red-600">- {money(feesN)}</span>
+            </div>
+          )}
+          {adjs.filter(a => a.label.trim() && Number(a.amount)).map((a, i) => (
+            <div key={i} className="flex justify-between text-sm">
+              <span className="text-slate-600">{a.label}:</span>
+              <span className={`num font-bold ${Number(a.amount) > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {Number(a.amount) > 0 ? '+' : ''}{money(Number(a.amount))}
+              </span>
+            </div>
+          ))}
+          <div className="border-t border-slate-200 pt-2 mt-2">
+            <div className="flex justify-between text-base">
+              <span className="font-bold text-slate-800">الصافي المستحق:</span>
+              <span className="num font-display text-xl font-bold text-brand-700">{money(net)}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+          <div className="font-bold mb-1">⏳ ملاحظة</div>
+          <div className="text-xs">بعد إنشاء التسوية، ستبقى بانتظار الاعتماد. بعد الاعتماد ستُضاف إلى إجمالي المُحصَّل.</div>
+        </div>
       </div>
     </Modal>
   );
