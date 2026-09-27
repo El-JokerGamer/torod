@@ -32,6 +32,27 @@ export default function Cod() {
           <div key={s.label} className="relative"><div className="text-[11px] font-semibold text-slate-400">{s.label}</div><div className={`font-display text-2xl font-bold num mt-1 ${s.cls}`}>{s.value}</div></div>
         ))}
       </div>
+      
+      {/* رسالة توضيحية عن صلاحيات التسوية */}
+      {!canSettle && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+          <Banknote className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-sm text-amber-800">
+            <div className="font-bold mb-1">⚠️ التسوية المالية مقيدة</div>
+            <div className="text-xs">إنشاء واعتماد التسويات المالية متاح فقط لـ <strong>محاسب COD</strong> أو <strong>المالك</strong>. يمكنك فقط عرض التسويات الموجودة.</div>
+          </div>
+        </div>
+      )}
+      
+      {canSettle && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-start gap-3">
+          <Check className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+          <div className="text-sm text-emerald-800">
+            <div className="font-bold mb-1">✅ لديك صلاحية التسوية</div>
+            <div className="text-xs">يمكنك إنشاء واعتماد التسويات المالية للمندوبين. التسوية لا تتم تلقائياً - يجب إنشاؤها يدوياً واعتمادها.</div>
+          </div>
+        </div>
+      )}
       <div>
         <div className="flex flex-wrap items-center gap-2 mb-2.5">
           <h3 className="font-display font-bold text-ink text-base flex items-center gap-2"><Bike className="w-5 h-5 text-brand-600" /> التحصيل حسب المندوب</h3>
