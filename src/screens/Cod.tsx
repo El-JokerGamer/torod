@@ -1,15 +1,14 @@
 import { useState } from 'react';
-import { Search, Bike, FileText, Check, Clock, Plus, Minus, Banknote } from 'lucide-react';
-import { useDB, useMe, courierCollected, createSettlement, settleSettlement } from '../lib/store';
+import { Search, Bike, FileText, Check, Plus, Minus, Banknote } from 'lucide-react';
+import { useDB, useMe, courierCollected, createSettlement } from '../lib/store';
 import { money, fmtFull, timeAgo } from '../lib/data';
-import type { Settlement, User } from '../lib/data';
-import { Btn, Card, Modal, Field, Input, Empty, Avatar, Badge, Confirm } from '../ui/kit';
+import type { User } from '../lib/data';
+import { Btn, Card, Modal, Field, Input, Empty, Avatar, Badge } from '../ui/kit';
 
 export default function Cod() {
   const db = useDB();
   const me = useMe()!;
   const [settleFor, setSettleFor] = useState<User | null>(null);
-  const [toSettle, setToSettle] = useState<Settlement | null>(null);
   const [q, setQ] = useState('');
   const canSettle = ['owner', 'finance'].includes(me.role);
   const needle = q.trim().toLowerCase();
@@ -39,17 +38,7 @@ export default function Cod() {
           <Banknote className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div className="text-sm text-amber-800">
             <div className="font-bold mb-1">⚠️ التسوية المالية مقيدة</div>
-            <div className="text-xs">إنشاء واعتماد التسويات المالية متاح فقط لـ <strong>محاسب COD</strong> أو <strong>المالك</strong>. يمكنك فقط عرض التسويات الموجودة.</div>
-          </div>
-        </div>
-      )}
-      
-      {canSettle && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-start gap-3">
-          <Check className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-          <div className="text-sm text-emerald-800">
-            <div className="font-bold mb-1">✅ لديك صلاحية التسوية</div>
-            <div className="text-xs">يمكنك إنشاء واعتماد التسويات المالية للمندوبين. التسوية لا تتم تلقائياً - يجب إنشاؤها يدوياً واعتمادها.</div>
+            <div className="text-xs">إنشاء التسويات المالية متاح فقط لـ <strong>محاسب COD</strong> أو <strong>المالك</strong>. يمكنك فقط عرض التسويات الموجودة.</div>
           </div>
         </div>
       )}
@@ -92,8 +81,7 @@ export default function Cod() {
                       <td className="px-3 py-2.5 num font-bold text-slate-800">{money(s.base)}</td>
                       <td className="px-3 py-2.5 num text-xs text-red-600 hidden md:table-cell">- {money(s.fees)}</td>
                       <td className="px-3 py-2.5 num font-bold text-brand-700">{money(s.net)}</td>
-                      <td className="px-3 py-2.5">{s.status === 'settled' ? <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-600/25"><Check className="w-3 h-3" /> معتمدة</Badge> : <Badge className="bg-amber-50 text-amber-800 ring-amber-600/25"><Clock className="w-3 h-3" /> بانتظار الاعتماد</Badge>}</td>
-                      {canSettle && <td className="px-3 py-2.5 text-end">{s.status === 'pending' && <Btn sm v="success" icon={<Check className="w-3.5 h-3.5" />} onClick={() => setToSettle(s)}>اعتماد</Btn>}</td>}
+                      <td className="px-3 py-2.5"><Badge className="bg-emerald-50 text-emerald-700 ring-emerald-600/25"><Check className="w-3 h-3" /> معتمدة</Badge></td>
                     </tr>
                   );
                 })}
@@ -103,7 +91,6 @@ export default function Cod() {
         )}
       </Card>
       {settleFor && <SettlementModal courier={settleFor} me={me} onClose={() => setSettleFor(null)} />}
-      <Confirm open={!!toSettle} onClose={() => setToSettle(null)} onYes={() => toSettle && settleSettlement(me, toSettle.id)} title="اعتماد التسوية" msg={<>اعتماد تسوية <b>{db.users.find((u) => u.id === toSettle?.courierId)?.name}</b> بصافي <b className="num">{money(toSettle?.net ?? 0)}</b>؟ بعد الاعتماد تُقفل طلباتها ماليًا.</>} yes="اعتماد التسوية" />
     </div>
   );
 }

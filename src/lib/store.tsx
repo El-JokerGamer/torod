@@ -544,11 +544,11 @@ export function createSettlement(me: User, courierId: string, fees: number, adju
   mutate((d) => {
     d.settlements.unshift({
       id, courierId, orderIds: orders.map((o) => o.id), base: amount, fees, adjustments, net,
-      status: 'pending', createdAt: Date.now(), by: me.name,
+      status: 'settled', createdAt: Date.now(), settledAt: Date.now(), by: me.name,
     });
     d.orders.forEach((o) => { if (orders.some((x) => x.id === o.id)) o.settlementId = id; });
   });
-  toast(`تم إنشاء تسوية بقيمة ${money(net)} — بانتظار الاعتماد`);
+  toast(`تم إنشاء واعتماد تسوية بقيمة ${money(net)} بنجاح`);
 }
 
 export function settleSettlement(me: User, id: string) {
