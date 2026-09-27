@@ -28,6 +28,7 @@ export default function CourierApp() {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
 
   const toReceive = useMemo(() => db.orders.filter((o) => o.courierId === me.id && o.status === 'assigned'), [db.orders, me.id]);
   const active = useMemo(() => db.orders.filter((o) => o.courierId === me.id && ['handed', 'on_way', 'arrived'].includes(o.status)).sort((a, b) => b.updatedAt - a.updatedAt), [db.orders, me.id]);
@@ -45,6 +46,7 @@ export default function CourierApp() {
   useEffect(() => {
     if (!navigator.geolocation) {
       setLocationError('المتصفح لا يدعم تحديد الموقع');
+      setLocationPermissionDenied(true);
       return;
     }
 
@@ -59,11 +61,13 @@ export default function CourierApp() {
         });
         setLocationError(null);
         setLocationLoading(false);
+        setLocationPermissionDenied(false);
       },
       (error) => {
         let errorMsg = 'تعذر تحديد الموقع';
         if (error.code === error.PERMISSION_DENIED) {
           errorMsg = 'يرجى السماح بتحديد الموقع من إعدادات المتصفح';
+          setLocationPermissionDenied(true);
         } else if (error.code === error.POSITION_UNAVAILABLE) {
           errorMsg = 'معلومات الموقع غير متاحة';
         } else if (error.code === error.TIMEOUT) {
@@ -85,11 +89,80 @@ export default function CourierApp() {
     };
   }, []);
 
+  // دالة لإعادة طلب إذن الموقع
+  const retryLocationPermission = () => {
+    setLocationPermissionDenied(false);
+    setLocationError(null);
+    setLocationLoading(true);
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+        setLocationError(null);
+        setLocationLoading(false);
+        setLocationPermissionDenied(false);
+      },
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          setLocationPermissionDenied(true);
+          setLocationError('تم رفض إذن الموقع - يرجى السماح من إعدادات المتصفح');
+        }
+        setLocationLoading(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+      }
+    );
+  };
+
   const tabs: { key: Tab; label: string; icon: React.ReactNode; count: number }[] = [
     { key: 'tasks', label: 'مهامي', icon: <Bike className="w-4 h-4" />, count: active.length + toReceive.length },
     { key: 'issues', label: 'البلاغات', icon: <MessageSquare className="w-4 h-4" />, count: myIssues.filter((i) => i.status === 'open' || i.status === 'progress').length },
     { key: 'done', label: 'المنجز', icon: <Check className="w-4 h-4" />, count: doneToday.length },
   ];
+
+  // إذا تم رفض إذن الموقع، عرض شاشة كاملة تمنع الاستخدام
+  if (locationPermissionDenied) {
+    return (
+      <div className="flex-1 min-h-0 bg-ink text-white flex items-center justify-center p-6">
+        <div className="w-full max-w-md bg-ink-2 rounded-2xl p-8 text-center shadow-2xl">
+          <div className="w-20 h-20 mx-auto mb-6 bg-red-500/20 rounded-full flex items-center justify-center">
+            <MapPin className="w-10 h-10 text-red-400" />
+          </div>
+          <h2 className="text-2xl font-bold mb-3">إذن الموقع مطلوب</h2>
+          <p className="text-slate-300 mb-6 leading-relaxed">
+            تطبيق طرود يتطلب إذن تحديد الموقع للعمل. يرجى السماح بتحديد الموقع من إعدادات المتصفح.
+          </p>
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 mb-6 text-right">
+            <p className="text-sm text-amber-200 mb-2 font-semibold">كيفية السماح بتحديد الموقع:</p>
+            <ol className="text-xs text-amber-100 space-y-1 list-decimal list-inside">
+              <li>اضغط على أيقونة القفل 🔒 في شريط العنوان</li>
+              <li>اختر "إعدادات الموقع"</li>
+              <li>فعّل خيار "الموقع"</li>
+              <li>أعد تحميل الصفحة</li>
+            </ol>
+          </div>
+          <button
+            onClick={retryLocationPermission}
+            className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+          >
+            <MapPin className="w-5 h-5" />
+            إعادة المحاولة
+          </button>
+          <button
+            onClick={logout}
+            className="w-full mt-3 bg-white/10 hover:bg-white/15 text-white font-semibold py-3 rounded-xl transition-colors"
+          >
+            تسجيل الخروج
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 min-h-0 bg-ink text-white flex justify-center">
