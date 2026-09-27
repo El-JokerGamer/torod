@@ -41,7 +41,7 @@ export default function CourierApp() {
   const collectedToday = doneToday.filter((o) => o.status === 'delivered').reduce((s, o) => s + o.cod, 0);
   const myRoute = db.routes.find((r) => r.courierIds.includes(me.id));
 
-  // طلب إذن الموقع عند فتح التطبيق
+  // نظام تحديث الموقع المستمر كل 30 ثانية
   useEffect(() => {
     if (!navigator.geolocation) {
       setLocationError('المتصفح لا يدعم تحديد الموقع');
@@ -49,7 +49,9 @@ export default function CourierApp() {
     }
 
     setLocationLoading(true);
-    navigator.geolocation.getCurrentPosition(
+    
+    // بدء مراقبة الموقع المستمر
+    const watchId = navigator.geolocation.watchPosition(
       (position) => {
         setLocation({
           lat: position.coords.latitude,
@@ -73,9 +75,14 @@ export default function CourierApp() {
       {
         enableHighAccuracy: true,
         timeout: 10000,
-        maximumAge: 0,
+        maximumAge: 30000, // تحديث كل 30 ثانية
       }
     );
+
+    // تنظيف عند إلغاء التركيب
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
   }, []);
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode; count: number }[] = [

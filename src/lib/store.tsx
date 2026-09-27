@@ -534,13 +534,15 @@ export function courierCollected(db: DB, courierId: string) {
   return { orders, amount, allDeliveredAmount: allDelivered.reduce((s, o) => s + o.cod, 0) };
 }
 
-export function createSettlement(me: User, courierId: string, fees: number, adjustments: { label: string; amount: number }[]) {
+export async function createSettlement(me: User, courierId: string, fees: number, adjustments: { label: string; amount: number }[]) {
   if (!can(me, ['owner', 'finance'])) return toast('صلاحية غير كافية', 'error');
   const { orders, amount } = courierCollected(state, courierId);
   if (orders.length === 0 && amount === 0) return toast('لا توجد مبالغ معلقة لهذا المندوب', 'error');
   const adjTotal = adjustments.reduce((s, a) => s + a.amount, 0);
   const net = amount - fees + adjTotal;
   const id = uid();
+  
+  // إنشاء التسوية محلياً
   mutate((d) => {
     d.settlements.unshift({
       id, courierId, orderIds: orders.map((o) => o.id), base: amount, fees, adjustments, net,
@@ -548,6 +550,25 @@ export function createSettlement(me: User, courierId: string, fees: number, adju
     });
     d.orders.forEach((o) => { if (orders.some((x) => x.id === o.id)) o.settlementId = id; });
   });
+  
+  // حفظ التسوية في قاعدة البيانات
+  if (remoteReady) {
+    try {
+      const settlement = state.settlements.find(s => s.id === id);
+      if (settlement) {
+        await upsertRows('settlements', [settlementToRow(settlement as any)]);
+        // تحديث الطلبات المرتبطة
+        const updatedOrders = state.orders.filter(o => orders.some(x => x.id === o.id));
+        if (updatedOrders.length > 0) {
+          await upsertRows('orders', updatedOrders.map(o => orderToRow(o as any)));
+        }
+      }
+    } catch (e) {
+      console.error('[taroud] settlement save failed:', e);
+      toast('تم إنشاء التسوية محلياً ولكن تعذر حفظها في قاعدة البيانات', 'warn');
+    }
+  }
+  
   toast(`تم إنشاء واعتماد تسوية بقيمة ${money(net)} بنجاح`);
 }
 
@@ -580,32 +601,63 @@ export function toggleOnline(me: User) {
   toast(turningOn ? 'أنت متصل الآن — موقعك ظاهر لغرفة العمليات' : 'تم إيقاف الاتصال', turningOn ? 'success' : 'info');
 }
 
-// ── محرك مواقع المندوبين: تحديث كل 15 ثانية ──
+// ── محرك مواقع المندوبين: تحديث كل 30 ثانية مع GPS حقيقي ──
 export function startLiveEngine() {
+  let watchId: number | null = null;
+  
+  // بدء مراقبة الموقع المستمر
+  if ('geolocation' in navigator) {
+    watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const me = state.users.find(u => u.id === getSessionId());
+        if (!me || me.role !== 'courier' || !me.online) return;
+        
+        // تحويل GPS إلى إحداثيات الخريطة
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        
+        // تحويل بسيط من GPS إلى إحداثيات الخريطة (0-100)
+        // مصر: lat 22-32, lng 25-37
+        const x = ((lng - 25) / 12) * 100;
+        const y = ((32 - lat) / 10) * 100;
+        
+        mutate((d) => {
+          const now = Date.now();
+          let p = d.positions[me.id];
+          if (!p) {
+            p = { x, y, tx: x, ty: y, lastAt: now };
+            d.positions[me.id] = p;
+          } else {
+            p.x = x;
+            p.y = y;
+            p.tx = x;
+            p.ty = y;
+            p.lastAt = now;
+          }
+        }, { sync: false });
+        
+        // حفظ الموقع في قاعدة البيانات
+        if (remoteReady) {
+          const pos = state.positions[me.id];
+          if (pos) {
+            upsertRows('positions', [posToRow(me.id, pos)]).catch(() => { /* صامت */ });
+          }
+        }
+      },
+      (error) => {
+        console.warn('[taroud] Geolocation error:', error.message);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 30000, // تحديث كل 30 ثانية
+      }
+    );
+  }
+  
+  // تحديث احتياطي كل 30 ثانية للمندوبين الآخرين
   const tick = () => {
     if (!state.users.some((u) => u.role === 'courier' && u.online)) return;
-    mutate((d) => {
-      const now = Date.now();
-      for (const u of d.users) {
-        if (u.role !== 'courier' || !u.online) continue;
-        let p = d.positions[u.id];
-        if (!p) { p = { x: 50, y: 30, tx: 48, ty: 28, lastAt: now }; d.positions[u.id] = p; }
-        const active = d.orders
-          .filter((o) => o.courierId === u.id && ['handed', 'on_way', 'arrived'].includes(o.status))
-          .sort((a, b) => b.updatedAt - a.updatedAt)[0];
-        if (active) { p.tx = active.x; p.ty = active.y; }
-        const dx = p.tx - p.x, dy = p.ty - p.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist < 1.2) {
-          if (!active) { p.tx = 36 + Math.random() * 34; p.ty = 8 + Math.random() * 46; }
-        } else {
-          const step = 1.6 + Math.random() * 1.6;
-          p.x += (dx / dist) * Math.min(dist, step) + (Math.random() - 0.5) * 0.5;
-          p.y += (dy / dist) * Math.min(dist, step) + (Math.random() - 0.5) * 0.5;
-        }
-        p.lastAt = now;
-      }
-    }, { sync: false });
     if (remoteReady) {
       const rows = state.users
         .filter((u) => u.role === 'courier' && u.online && state.positions[u.id])
@@ -613,9 +665,25 @@ export function startLiveEngine() {
       if (rows.length) upsertRows('positions', rows).catch(() => { /* صامت */ });
     }
   };
-  const t = setInterval(tick, 15000);
+  
+  const t = setInterval(tick, 30000);
   tick();
-  return () => clearInterval(t);
+  
+  return () => {
+    clearInterval(t);
+    if (watchId !== null) {
+      navigator.geolocation.clearWatch(watchId);
+    }
+  };
+}
+
+// دالة مساعدة للحصول على معرف الجلسة
+function getSessionId(): string | null {
+  try {
+    return localStorage.getItem('taroud-session');
+  } catch {
+    return null;
+  }
 }
 
 export type { DB, User, Order, Issue, Settlement };
