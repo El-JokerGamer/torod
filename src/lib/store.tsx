@@ -452,8 +452,8 @@ function courierAction(me: User, orderId: string, from: OrderStatus[], to: Order
   toast(label, kind === 'ok' ? 'success' : kind === 'warn' || kind === 'bad' ? 'warn' : 'info');
 }
 
-export const courierReceive = (me: User, orderId: string) =>
-  courierAction(me, orderId, ['assigned'], 'handed', 'استلام الشحنة من المخزن', 'ok');
+export const courierReceive = (me: User, orderId: string, location?: { lat: number; lng: number }) =>
+  courierAction(me, orderId, ['assigned'], 'handed', `استلام الشحنة من المخزن${location ? ` (الموقع: ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)})` : ''}`, 'ok');
 export const courierOnWay = (me: User, orderId: string) =>
   courierAction(me, orderId, ['handed'], 'on_way', 'التحرك نحو العميل');
 export const courierArrived = (me: User, orderId: string) =>

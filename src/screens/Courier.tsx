@@ -25,6 +25,9 @@ export default function CourierApp() {
   const [failFor, setFailFor] = useState<Order | null>(null);
   const [showIssue, setShowIssue] = useState(false);
   const [chatFor, setChatFor] = useState<string | null>(null);
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
 
   const toReceive = useMemo(() => db.orders.filter((o) => o.courierId === me.id && o.status === 'assigned'), [db.orders, me.id]);
   const active = useMemo(() => db.orders.filter((o) => o.courierId === me.id && ['handed', 'on_way', 'arrived'].includes(o.status)).sort((a, b) => b.updatedAt - a.updatedAt), [db.orders, me.id]);
@@ -37,6 +40,43 @@ export default function CourierApp() {
 
   const collectedToday = doneToday.filter((o) => o.status === 'delivered').reduce((s, o) => s + o.cod, 0);
   const myRoute = db.routes.find((r) => r.courierIds.includes(me.id));
+
+  // طلب إذن الموقع عند فتح التطبيق
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationError('المتصفح لا يدعم تحديد الموقع');
+      return;
+    }
+
+    setLocationLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+        setLocationError(null);
+        setLocationLoading(false);
+      },
+      (error) => {
+        let errorMsg = 'تعذر تحديد الموقع';
+        if (error.code === error.PERMISSION_DENIED) {
+          errorMsg = 'يرجى السماح بتحديد الموقع من إعدادات المتصفح';
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          errorMsg = 'معلومات الموقع غير متاحة';
+        } else if (error.code === error.TIMEOUT) {
+          errorMsg = 'انتهت مهلة طلب الموقع';
+        }
+        setLocationError(errorMsg);
+        setLocationLoading(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  }, []);
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode; count: number }[] = [
     { key: 'tasks', label: 'مهامي', icon: <Bike className="w-4 h-4" />, count: active.length + toReceive.length },
@@ -71,6 +111,26 @@ export default function CourierApp() {
             <div className="flex items-center gap-2 text-[11px] font-semibold text-red-300 bg-red-500/10 ring-1 ring-red-500/30 rounded-md px-3 py-2 mb-3 animate-fade-up">
               <Flag className="w-4 h-4 shrink-0" />
               أنت غير متصل — اضغط «اتصال» لاستلام المهام ومشاركة موقعك
+            </div>
+          )}
+
+          {/* حالة الموقع */}
+          {locationLoading && (
+            <div className="flex items-center gap-2 text-[11px] font-semibold text-sky-300 bg-sky-500/10 ring-1 ring-sky-500/30 rounded-md px-3 py-2 mb-3 animate-fade-up">
+              <MapPin className="w-4 h-4 shrink-0 animate-pulse" />
+              جارٍ تحديد موقعك...
+            </div>
+          )}
+          {locationError && (
+            <div className="flex items-center gap-2 text-[11px] font-semibold text-amber-300 bg-amber-500/10 ring-1 ring-amber-500/30 rounded-md px-3 py-2 mb-3 animate-fade-up">
+              <MapPin className="w-4 h-4 shrink-0" />
+              {locationError}
+            </div>
+          )}
+          {location && !locationLoading && !locationError && (
+            <div className="flex items-center gap-2 text-[11px] font-semibold text-emerald-300 bg-emerald-500/10 ring-1 ring-emerald-500/30 rounded-md px-3 py-2 mb-3 animate-fade-up">
+              <MapPin className="w-4 h-4 shrink-0" />
+              تم تحديد موقعك بنجاح
             </div>
           )}
           <div className="grid grid-cols-3 gap-2 pb-3.5">
@@ -161,7 +221,7 @@ export default function CourierApp() {
       </div>
 
       {openChat && <IssueChatScreen issue={openChat} me={me} onClose={() => setChatFor(null)} />}
-      {receiveFor && <ReceiveConfirmModal order={receiveFor} me={me} onClose={() => setReceiveFor(null)} />}
+      {receiveFor && <ReceiveConfirmModal order={receiveFor} me={me} onClose={() => setReceiveFor(null)} location={location} />}
       {deliverFor && <DeliverModal order={deliverFor} me={me} onClose={() => setDeliverFor(null)} />}
       {failFor && <FailModal order={failFor} me={me} onClose={() => setFailFor(null)} />}
       {showIssue && <FieldIssueModal me={me} onClose={() => setShowIssue(false)} />}
@@ -180,44 +240,75 @@ function PickupCard({ order, index, onReceive, disabled }: { order: Order; index
   );
 }
 
-// ── نافذة تأكيد الاستلام ──
-function ReceiveConfirmModal({ order, me, onClose }: { order: Order; me: User; onClose: () => void }) {
+// ── نافذة تأكيد الاستلام (مصممة للجوال) ──
+function ReceiveConfirmModal({ order, me, onClose, location }: { order: Order; me: User; onClose: () => void; location?: { lat: number; lng: number } | null }) {
   const zone = zoneById(order.zoneId);
   const submit = () => {
-    courierReceive(me, order.id);
+    courierReceive(me, order.id, location || undefined);
     onClose();
   };
   return (
-    <Modal open onClose={onClose} title="تأكيد استلام الشحنة" w="max-w-md"
-      icon={<Check className="w-5 h-5" />} desc="تأكد من استلام الشحنة فعليًا من المخزن">
-      <div className="space-y-4">
-        <div className="bg-white rounded-lg ring-1 ring-slate-200 p-4 space-y-2">
-          <div className="flex items-center gap-2">
+    <div className="fixed inset-0 z-50 bg-ink flex flex-col">
+      {/* Header */}
+      <header className="bg-ink-3 px-4 py-4 flex items-center gap-3 border-b border-white/10">
+        <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
+          <X className="w-5 h-5 text-white" />
+        </button>
+        <h2 className="font-display font-bold text-lg text-white flex-1">تأكيد استلام الشحنة</h2>
+      </header>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* بطاقة الشحنة */}
+        <div className="bg-white rounded-xl p-5 space-y-3">
+          <div className="flex items-center justify-between">
             <CodeChip code={order.code} />
             <Badge className="bg-amber-50 text-amber-800 ring-amber-600/25">بانتظار الاستلام</Badge>
           </div>
-          <div className="font-bold text-lg text-slate-800">{order.customer}</div>
-          <div className="text-sm text-slate-600 flex items-center gap-1.5">
-            <MapPin className="w-4 h-4 text-brand-500" />
-            {order.address} — {zone?.name}
+          <div className="font-bold text-xl text-slate-800">{order.customer}</div>
+          <div className="text-sm text-slate-600 flex items-start gap-2">
+            <MapPin className="w-4 h-4 text-brand-500 mt-0.5 shrink-0" />
+            <span>{order.address} — {zone?.name}</span>
           </div>
           {order.cod > 0 && (
-            <div className="flex items-center justify-between bg-brand-50 ring-1 ring-brand-200 rounded-md px-3 py-2 mt-2">
-              <span className="text-xs font-bold text-brand-800">قيمة التحصيل</span>
-              <span className="num font-bold text-brand-700">{money(order.cod)}</span>
+            <div className="flex items-center justify-between bg-brand-50 ring-1 ring-brand-200 rounded-lg px-4 py-3 mt-3">
+              <span className="text-sm font-bold text-brand-800">💰 قيمة التحصيل</span>
+              <span className="num text-xl font-bold text-brand-700">{money(order.cod)}</span>
             </div>
           )}
         </div>
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm text-emerald-800">
-          <div className="font-bold mb-1">✅ تأكيد الاستلام</div>
-          <div className="text-xs">بضغطك على "تأكيد الاستلام" أنت تُقر باستلام الشحنة فعليًا من المخزن وستنتقل الحالة إلى "مُسلَّم للمندوب".</div>
+
+        {/* رسالة التأكيد */}
+        <div className="bg-emerald-50 border-2 border-emerald-300 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <Check className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <div className="font-bold text-base text-emerald-900 mb-1">تأكيد الاستلام</div>
+              <div className="text-sm text-emerald-800 leading-relaxed">
+                بضغطك على "تأكيد الاستلام" أنت تُقر باستلام الشحنة فعليًا من المخزن وستنتقل الحالة إلى "مُسلَّم للمندوب".
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-      <div className="flex justify-end gap-2 mt-4">
-        <Btn v="ghost" onClick={onClose}>إلغاء</Btn>
-        <Btn v="success" icon={<Check className="w-4 h-4" />} onClick={submit}>تأكيد الاستلام</Btn>
-      </div>
-    </Modal>
+
+      {/* Footer - أزرار كبيرة للجوال */}
+      <footer className="bg-ink-3 border-t border-white/10 p-4 pb-safe space-y-3">
+        <button
+          onClick={submit}
+          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg py-4 rounded-xl transition-colors flex items-center justify-center gap-2 active:scale-95"
+        >
+          <Check className="w-6 h-6" />
+          تأكيد الاستلام
+        </button>
+        <button
+          onClick={onClose}
+          className="w-full bg-white/10 hover:bg-white/15 text-white font-semibold text-base py-3 rounded-xl transition-colors"
+        >
+          إلغاء
+        </button>
+      </footer>
+    </div>
   );
 }
 
