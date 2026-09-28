@@ -1,5 +1,5 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { Package, Bike, Check, AlertTriangle, Banknote, ArrowLeft } from 'lucide-react';
+import { Package, Bike, Check, AlertTriangle, Banknote, ArrowLeft, MapPin } from 'lucide-react';
 import { useDB, useMe } from '../lib/store';
 import { STATUS_META, money, timeAgo, zoneById } from '../lib/data';
 import type { Order, OrderStatus, User } from '../lib/data';
@@ -114,13 +114,20 @@ export default function Dashboard({ goOrders }: { goOrders?: () => void }) {
         {/* المندوبون */}
         <Card title="المندوبون الآن" sub="الإشارة اللحظية من الميدان" pad={false}>
           {couriers.length === 0 ? (
-            <Empty icon={<Bike className="w-8 h-8" strokeWidth={1.4} />} title="لا يوجد مندوبون" sub="أضف مندوبين من شاشة إدارة الفريق ليظهروا على الخريطة" />
+            <Empty icon={<Bike className="w-8 h-8" strokeWidth={1.4} />} title="لا يوجد مندوبون" sub="أضف مندوبين من شاشة إدارة الفريق ليظهروا هنا" />
           ) : (
             <div className="divide-y divide-slate-100">
               {couriers.map((c) => {
                 const p = db.positions[c.id];
                 const active = db.orders.filter((o) => o.courierId === c.id && ['handed', 'on_way', 'arrived'].includes(o.status)).length;
                 const route = db.routes.find((r) => r.courierIds.includes(c.id));
+                const hasLocation = p && p.lastAt && Date.now() - p.lastAt < 60000; // آخر تحديث خلال دقيقة
+                
+                // رابط Google Maps Live Location
+                const mapsUrl = hasLocation 
+                  ? `https://www.google.com/maps/search/?api=1&query=${p.y},${p.x}`
+                  : null;
+                
                 return (
                   <div key={c.id} className="flex items-center gap-2.5 px-4 py-2.5">
                     <span className="relative">
@@ -132,9 +139,23 @@ export default function Dashboard({ goOrders }: { goOrders?: () => void }) {
                       <span className="block text-[11px] text-slate-500 truncate">{route?.name ?? 'بدون مسار'}</span>
                     </span>
                     {c.online ? (
-                      <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
-                        <LiveDot /> {active} نشط · {p ? timeAgo(p.lastAt) : ''}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
+                          <LiveDot /> {active} نشط
+                        </span>
+                        {mapsUrl && (
+                          <a 
+                            href={mapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-[10px] font-bold text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 ring-1 ring-brand-200 rounded-md px-2 py-1 transition-colors"
+                            title="عرض الموقع على الخريطة"
+                          >
+                            <MapPin className="w-3 h-3" />
+                            عرض الموقع
+                          </a>
+                        )}
+                      </div>
                     ) : (
                       <span className="text-[10px] font-semibold text-slate-400">غير متصل</span>
                     )}

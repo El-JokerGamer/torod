@@ -580,7 +580,20 @@ export function toggleOnline(me: User) {
   toast(turningOn ? 'أنت متصل الآن' : 'تم إيقاف الاتصال', turningOn ? 'success' : 'info');
 }
 
-// ── محرك المواقع (محذوف - تم استبداله بنظام Share Location) ──
+// ── تحديث موقع المندوب ──
+export function updateCourierLocation(courierId: string, lat: number, lng: number) {
+  mutate((d) => {
+    d.positions[courierId] = {
+      x: 50, // سيتم تحديثه لاحقاً
+      y: 30,
+      tx: 50,
+      ty: 30,
+      lastAt: Date.now(),
+    };
+  });
+}
+
+// ── محرك المواقع (محذوف - تم استبداله بنظام تتبع تلقائي) ──
 export function startLiveEngine() {
   return () => {};
 }

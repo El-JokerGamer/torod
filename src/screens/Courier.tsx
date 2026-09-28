@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   LogOut, Power, MapPin, Phone, Navigation, Check, X, Camera, Send, Plus, Flag,
-  ChevronDown, Warehouse, Bike, MessageSquare, Lock, Share2,
+  ChevronDown, Warehouse, Bike, MessageSquare, Lock,
 } from 'lucide-react';
 import {
   useDB, useMe, logout, toggleOnline, courierScanReceive, courierOnWay, courierArrived, courierDeliver,
@@ -11,7 +11,6 @@ import { STATUS_META, FAIL_REASONS, ISSUE_TYPES, ISSUE_STATUSES, zoneById, money
 import type { Issue, IssueType, Order, Priority, User } from '../lib/data';
 import { Btn, Modal, Field, Input, Select, Textarea, Badge, CodeChip, Empty, AppIcon, PriorityBadge } from '../ui/kit';
 import { PodCapture } from '../ui/camera';
-import { ShareLocationModal } from '../ui/ShareLocation';
 
 type Tab = 'tasks' | 'issues' | 'done';
 
@@ -24,7 +23,8 @@ export default function CourierApp() {
   const [failFor, setFailFor] = useState<Order | null>(null);
   const [showIssue, setShowIssue] = useState(false);
   const [chatFor, setChatFor] = useState<string | null>(null);
-  const [showShareLocation, setShowShareLocation] = useState(false);
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   const toReceive = useMemo(() => db.orders.filter((o) => o.courierId === me.id && o.status === 'assigned'), [db.orders, me.id]);
   const active = useMemo(() => db.orders.filter((o) => o.courierId === me.id && ['handed', 'on_way', 'arrived'].includes(o.status)).sort((a, b) => b.updatedAt - a.updatedAt), [db.orders, me.id]);
@@ -37,6 +37,63 @@ export default function CourierApp() {
 
   const collectedToday = doneToday.filter((o) => o.status === 'delivered').reduce((s, o) => s + o.cod, 0);
   const myRoute = db.routes.find((r) => r.courierIds.includes(me.id));
+
+  // نظام تتبع الموقع التلقائي - يحدث كل 30 ثانية
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationError('المتصفح لا يدعم تحديد الموقع');
+      return;
+    }
+
+    // الحصول على الموقع الأولي
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+        setLocationError(null);
+      },
+      (error) => {
+        let errorMsg = 'تعذر تحديد الموقع';
+        if (error.code === error.PERMISSION_DENIED) {
+          errorMsg = 'يرجى السماح بتحديد الموقع من إعدادات المتصفح';
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          errorMsg = 'معلومات الموقع غير متاحة';
+        } else if (error.code === error.TIMEOUT) {
+          errorMsg = 'انتهت مهلة طلب الموقع';
+        }
+        setLocationError(errorMsg);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+
+    // تحديث الموقع كل 30 ثانية
+    const intervalId = setInterval(() => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.error('خطأ في تحديث الموقع:', error);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 30000,
+        }
+      );
+    }, 30000);
+
+    return () => clearInterval(intervalId);
+  }, []);
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode; count: number }[] = [
     { key: 'tasks', label: 'مهامي', icon: <Bike className="w-4 h-4" />, count: active.length + toReceive.length },
@@ -63,9 +120,6 @@ export default function CourierApp() {
             <Btn sm v={me.online ? 'dark' : 'success'} className={me.online ? 'bg-white/10 ring-1 ring-white/15' : ''} icon={<Power className="w-3.5 h-3.5" />} onClick={() => toggleOnline(me)}>
               {me.online ? 'إيقاف' : 'اتصال'}
             </Btn>
-            <button onClick={() => setShowShareLocation(true)} title="مشاركة الموقع" className="p-2 rounded-md bg-white/5 ring-1 ring-white/10 text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10 hover:ring-emerald-500/30 transition-all active:scale-90">
-              <Share2 className="w-4 h-4" />
-            </button>
             <button onClick={() => logout()} title="تسجيل الخروج" className="p-2 rounded-md bg-white/5 ring-1 ring-white/10 text-slate-400 hover:text-red-300 hover:bg-red-500/10 hover:ring-red-500/30 transition-all active:scale-90">
               <LogOut className="w-4 h-4" />
             </button>
@@ -73,7 +127,21 @@ export default function CourierApp() {
           {!me.online && (
             <div className="flex items-center gap-2 text-[11px] font-semibold text-red-300 bg-red-500/10 ring-1 ring-red-500/30 rounded-md px-3 py-2 mb-3 animate-fade-up">
               <Flag className="w-4 h-4 shrink-0" />
-              أنت غير متصل — اضغط «اتصال» لاستلام المهام ومشاركة موقعك
+              أنت غير متصل — اضغط «اتصال» لاستلام المهام
+            </div>
+          )}
+
+          {/* حالة الموقع */}
+          {locationError && (
+            <div className="flex items-center gap-2 text-[11px] font-semibold text-amber-300 bg-amber-500/10 ring-1 ring-amber-500/30 rounded-md px-3 py-2 mb-3 animate-fade-up">
+              <MapPin className="w-4 h-4 shrink-0" />
+              {locationError}
+            </div>
+          )}
+          {location && !locationError && (
+            <div className="flex items-center gap-2 text-[11px] font-semibold text-emerald-300 bg-emerald-500/10 ring-1 ring-emerald-500/30 rounded-md px-3 py-2 mb-3 animate-fade-up">
+              <MapPin className="w-4 h-4 shrink-0" />
+              موقعك يُشارك تلقائياً مع الإدارة
             </div>
           )}
 
@@ -159,7 +227,6 @@ export default function CourierApp() {
       {deliverFor && <DeliverModal order={deliverFor} me={me} onClose={() => setDeliverFor(null)} />}
       {failFor && <FailModal order={failFor} me={me} onClose={() => setFailFor(null)} />}
       {showIssue && <FieldIssueModal me={me} onClose={() => setShowIssue(false)} />}
-      <ShareLocationModal open={showShareLocation} onClose={() => setShowShareLocation(false)} />
     </div>
   );
 }
