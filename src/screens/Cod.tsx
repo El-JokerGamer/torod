@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { Search, Bike, FileText, Check, Plus, Minus, Banknote } from 'lucide-react';
-import { useDB, useMe, courierCollected, createSettlement } from '../lib/store';
+import { Search, Bike, FileText, Check, Clock, Plus, Minus, Banknote } from 'lucide-react';
+import { useDB, useMe, courierCollected, createSettlement, settleSettlement } from '../lib/store';
 import { money, fmtFull, timeAgo } from '../lib/data';
-import type { User } from '../lib/data';
-import { Btn, Card, Modal, Field, Input, Empty, Avatar, Badge } from '../ui/kit';
+import type { User, Settlement } from '../lib/data';
+import { Btn, Card, Modal, Field, Input, Empty, Avatar, Badge, Confirm } from '../ui/kit';
 
 export default function Cod() {
   const db = useDB();
   const me = useMe()!;
   const [settleFor, setSettleFor] = useState<User | null>(null);
+  const [toSettle, setToSettle] = useState<Settlement | null>(null);
   const [q, setQ] = useState('');
   const canSettle = ['owner', 'finance'].includes(me.role);
   const needle = q.trim().toLowerCase();
@@ -71,7 +72,7 @@ export default function Cod() {
         {settlements.length === 0 ? <Empty icon={<FileText className="w-8 h-8" strokeWidth={1.4} />} title={needle ? 'لا تسويات تطابق البحث' : 'لا توجد تسويات بعد'} sub={needle ? 'جرّب اسم مندوب آخر' : 'أنشئ أول تسوية من بطاقة المندوب أعلاه'} /> : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[680px]">
-              <thead><tr className="text-[11px] text-slate-500 bg-slate-50 border-b border-slate-100"><th className="text-start font-bold px-4 py-2.5">المندوب</th><th className="text-start font-bold px-3 py-2.5">التاريخ</th><th className="text-start font-bold px-3 py-2.5">الطلبات</th><th className="text-start font-bold px-3 py-2.5">المحصَّل</th><th className="text-start font-bold px-3 py-2.5 hidden md:table-cell">الرسوم</th><th className="text-start font-bold px-3 py-2.5">الصافي</th><th className="text-start font-bold px-3 py-2.5">الحالة</th></tr></thead>
+              <thead><tr className="text-[11px] text-slate-500 bg-slate-50 border-b border-slate-100"><th className="text-start font-bold px-4 py-2.5">المندوب</th><th className="text-start font-bold px-3 py-2.5">التاريخ</th><th className="text-start font-bold px-3 py-2.5">الطلبات</th><th className="text-start font-bold px-3 py-2.5">المحصَّل</th><th className="text-start font-bold px-3 py-2.5 hidden md:table-cell">الرسوم</th><th className="text-start font-bold px-3 py-2.5">الصافي</th><th className="text-start font-bold px-3 py-2.5">الحالة</th>{canSettle && <th className="px-3 py-2.5" />}</tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {settlements.map((s) => {
                   const c = db.users.find((u) => u.id === s.courierId);
@@ -83,7 +84,8 @@ export default function Cod() {
                       <td className="px-3 py-2.5 num font-bold text-slate-800">{money(s.base)}</td>
                       <td className="px-3 py-2.5 num text-xs text-red-600 hidden md:table-cell">- {money(s.fees)}</td>
                       <td className="px-3 py-2.5 num font-bold text-brand-700">{money(s.net)}</td>
-                      <td className="px-3 py-2.5"><Badge className="bg-emerald-50 text-emerald-700 ring-emerald-600/25"><Check className="w-3 h-3" /> معتمدة</Badge></td>
+                      <td className="px-3 py-2.5">{s.status === 'settled' ? <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-600/25"><Check className="w-3 h-3" /> معتمدة</Badge> : <Badge className="bg-amber-50 text-amber-800 ring-amber-600/25"><Clock className="w-3 h-3" /> بانتظار الاعتماد</Badge>}</td>
+                      {canSettle && <td className="px-3 py-2.5 text-end">{s.status === 'pending' && <Btn sm v="success" icon={<Check className="w-3.5 h-3.5" />} onClick={() => setToSettle(s)}>اعتماد</Btn>}</td>}
                     </tr>
                   );
                 })}
@@ -92,8 +94,8 @@ export default function Cod() {
           </div>
         )}
       </Card>
-      
       {settleFor && <SettlementModal courier={settleFor} me={me} onClose={() => setSettleFor(null)} />}
+      <Confirm open={!!toSettle} onClose={() => setToSettle(null)} onYes={() => toSettle && settleSettlement(me, toSettle.id)} title="اعتماد التسوية" msg={<>اعتماد تسوية <b>{db.users.find((u) => u.id === toSettle?.courierId)?.name}</b> بصافي <b className="num">{money(toSettle?.net ?? 0)}</b>؟ بعد الاعتماد تُقفل طلباتها ماليًا.</>} yes="اعتماد التسوية" />
     </div>
   );
 }

@@ -417,7 +417,17 @@ export function assignCourier(me: User, orderId: string, courierId: string) {
   toast('تم الإسناد — ظهر الطلب في تطبيق المندوب فورًا');
 }
 
-
+export function openCodeForCourier(me: User, orderId: string) {
+  const o = state.orders.find((x) => x.id === orderId);
+  if (!o) return;
+  if (me.role === 'hub' && !me.hubIds.includes(o.hubId)) return toast('هذا الطلب خارج مخازنك المرتبطة', 'error');
+  if (o.status !== 'assigned') return toast('أسند الطلب لمندوب أولًا ليتمكن من مسحه', 'error');
+  mutate((d) => {
+    const ord = d.orders.find((x) => x.id === orderId)!;
+    touch(ord, ev(me.name, `فتح كود التتبع ${o.code} للمندوب للاستلام`, 'info'));
+  });
+  toast(`اعرض الكود ${o.code} على المندوب ليمسحه من تطبيقه`, 'info');
+}
 
 export function markReturned(me: User, orderId: string) {
   if (!can(me, ['owner', 'ops'])) return toast('صلاحية غير كافية', 'error');
@@ -452,8 +462,8 @@ function courierAction(me: User, orderId: string, from: OrderStatus[], to: Order
   toast(label, kind === 'ok' ? 'success' : kind === 'warn' || kind === 'bad' ? 'warn' : 'info');
 }
 
-export const courierReceive = (me: User, orderId: string, location?: { lat: number; lng: number }) =>
-  courierAction(me, orderId, ['assigned'], 'handed', `استلام الشحنة من المخزن${location ? ` (الموقع: ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)})` : ''}`, 'ok');
+export const courierScanReceive = (me: User, orderId: string) =>
+  courierAction(me, orderId, ['assigned'], 'handed', 'استلام الشحنة من المخزن (مسح باركود)', 'ok');
 export const courierOnWay = (me: User, orderId: string) =>
   courierAction(me, orderId, ['handed'], 'on_way', 'التحرك نحو العميل');
 export const courierArrived = (me: User, orderId: string) =>
@@ -544,11 +554,20 @@ export function createSettlement(me: User, courierId: string, fees: number, adju
   mutate((d) => {
     d.settlements.unshift({
       id, courierId, orderIds: orders.map((o) => o.id), base: amount, fees, adjustments, net,
-      status: 'settled', settledAt: Date.now(), createdAt: Date.now(), by: me.name,
+      status: 'pending', createdAt: Date.now(), by: me.name,
     });
     d.orders.forEach((o) => { if (orders.some((x) => x.id === o.id)) o.settlementId = id; });
   });
-  toast(`تم إنشاء تسوية بقيمة ${money(net)} بنجاح`);
+  toast(`تم إنشاء تسوية بقيمة ${money(net)} — بانتظار الاعتماد`);
+}
+
+export function settleSettlement(me: User, id: string) {
+  if (!can(me, ['owner', 'finance'])) return toast('صلاحية غير كافية', 'error');
+  mutate((d) => {
+    const s = d.settlements.find((x) => x.id === id);
+    if (s && s.status === 'pending') { s.status = 'settled'; s.settledAt = Date.now(); }
+  });
+  toast('تم اعتماد التسوية');
 }
 
 // ── الاتصال الميداني ──
@@ -571,63 +590,32 @@ export function toggleOnline(me: User) {
   toast(turningOn ? 'أنت متصل الآن — موقعك ظاهر لغرفة العمليات' : 'تم إيقاف الاتصال', turningOn ? 'success' : 'info');
 }
 
-// ── محرك مواقع المندوبين: تحديث كل 30 ثانية مع GPS حقيقي ──
+// ── محرك مواقع المندوبين: تحديث كل 15 ثانية ──
 export function startLiveEngine() {
-  let watchId: number | null = null;
-  
-  // بدء مراقبة الموقع المستمر
-  if ('geolocation' in navigator) {
-    watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        const me = state.users.find(u => u.id === getSessionId());
-        if (!me || me.role !== 'courier' || !me.online) return;
-        
-        // تحويل GPS إلى إحداثيات الخريطة
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        
-        // تحويل بسيط من GPS إلى إحداثيات الخريطة (0-100)
-        // مصر: lat 22-32, lng 25-37
-        const x = ((lng - 25) / 12) * 100;
-        const y = ((32 - lat) / 10) * 100;
-        
-        mutate((d) => {
-          const now = Date.now();
-          let p = d.positions[me.id];
-          if (!p) {
-            p = { x, y, tx: x, ty: y, lastAt: now };
-            d.positions[me.id] = p;
-          } else {
-            p.x = x;
-            p.y = y;
-            p.tx = x;
-            p.ty = y;
-            p.lastAt = now;
-          }
-        }, { sync: false });
-        
-        // حفظ الموقع في قاعدة البيانات
-        if (remoteReady) {
-          const pos = state.positions[me.id];
-          if (pos) {
-            upsertRows('positions', [posToRow(me.id, pos)]).catch(() => { /* صامت */ });
-          }
-        }
-      },
-      (error) => {
-        console.warn('[taroud] Geolocation error:', error.message);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 30000, // تحديث كل 30 ثانية
-      }
-    );
-  }
-  
-  // تحديث احتياطي كل 30 ثانية للمندوبين الآخرين
   const tick = () => {
     if (!state.users.some((u) => u.role === 'courier' && u.online)) return;
+    mutate((d) => {
+      const now = Date.now();
+      for (const u of d.users) {
+        if (u.role !== 'courier' || !u.online) continue;
+        let p = d.positions[u.id];
+        if (!p) { p = { x: 50, y: 30, tx: 48, ty: 28, lastAt: now }; d.positions[u.id] = p; }
+        const active = d.orders
+          .filter((o) => o.courierId === u.id && ['handed', 'on_way', 'arrived'].includes(o.status))
+          .sort((a, b) => b.updatedAt - a.updatedAt)[0];
+        if (active) { p.tx = active.x; p.ty = active.y; }
+        const dx = p.tx - p.x, dy = p.ty - p.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 1.2) {
+          if (!active) { p.tx = 36 + Math.random() * 34; p.ty = 8 + Math.random() * 46; }
+        } else {
+          const step = 1.6 + Math.random() * 1.6;
+          p.x += (dx / dist) * Math.min(dist, step) + (Math.random() - 0.5) * 0.5;
+          p.y += (dy / dist) * Math.min(dist, step) + (Math.random() - 0.5) * 0.5;
+        }
+        p.lastAt = now;
+      }
+    }, { sync: false });
     if (remoteReady) {
       const rows = state.users
         .filter((u) => u.role === 'courier' && u.online && state.positions[u.id])
@@ -635,25 +623,9 @@ export function startLiveEngine() {
       if (rows.length) upsertRows('positions', rows).catch(() => { /* صامت */ });
     }
   };
-  
-  const t = setInterval(tick, 30000);
+  const t = setInterval(tick, 15000);
   tick();
-  
-  return () => {
-    clearInterval(t);
-    if (watchId !== null) {
-      navigator.geolocation.clearWatch(watchId);
-    }
-  };
-}
-
-// دالة مساعدة للحصول على معرف الجلسة
-function getSessionId(): string | null {
-  try {
-    return localStorage.getItem('taroud-session');
-  } catch {
-    return null;
-  }
+  return () => clearInterval(t);
 }
 
 export type { DB, User, Order, Issue, Settlement };

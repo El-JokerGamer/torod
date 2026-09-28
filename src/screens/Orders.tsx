@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import {
-  Search, Plus, Trash2, Bike, RefreshCw, Check, PackageOpen, Warehouse,
+  Search, Plus, Trash2, Bike, RefreshCw, Check, PackageOpen, Warehouse, QrCode,
 } from 'lucide-react';
 import {
-  useDB, useMe, createOrder, assignCourier, deleteOrder, markReturned,
+  useDB, useMe, createOrder, assignCourier, openCodeForCourier, deleteOrder, markReturned,
 } from '../lib/store';
 import { STATUS_META, STATUS_FLOW, ZONES, zoneById, money, timeAgo, fmtFull } from '../lib/data';
 import type { Order, OrderStatus, User } from '../lib/data';
@@ -27,6 +27,7 @@ export default function Orders() {
   const [showNew, setShowNew] = useState(false);
   const [toDelete, setToDelete] = useState<Order | null>(null);
   const [assignFor, setAssignFor] = useState<Order | null>(null);
+  const [codeFor, setCodeFor] = useState<Order | null>(null);
 
   const base = scopedOrders(db.orders, me);
   const canCreate = ['owner', 'ops', 'hub'].includes(me.role);
@@ -148,19 +149,20 @@ export default function Orders() {
       </Card>
 
       {open && (
-        <OrderDrawer order={open} me={me} onClose={() => setOpenId(null)} onAssign={() => setAssignFor(open)} onDelete={() => setToDelete(open)} />
+        <OrderDrawer order={open} me={me} onClose={() => setOpenId(null)} onShowCode={() => setCodeFor(open)} onAssign={() => setAssignFor(open)} onDelete={() => setToDelete(open)} />
       )}
       {showNew && <NewOrderModal me={me} onClose={() => setShowNew(false)} />}
       <Confirm open={!!toDelete} onClose={() => setToDelete(null)} onYes={() => { if (toDelete) { deleteOrder(me, toDelete.id); setOpenId(null); } }}
         title="حذف طلب نهائيًا"
         msg={<>سيُحذف الطلب <b className="num" dir="ltr">{toDelete?.code}</b> الخاص بـ<b>{toDelete?.customer}</b> وكل سجله الزمني من قاعدة البيانات المشتركة. هذا الإجراء لا يمكن التراجع عنه.</>} />
       {assignFor && <AssignModal order={assignFor} me={me} onClose={() => setAssignFor(null)} />}
+      {codeFor && <ShowCodeModal order={codeFor} onClose={() => setCodeFor(null)} />}
     </div>
   );
 }
 
-function OrderDrawer({ order, me, onClose, onAssign, onDelete }: {
-  order: Order; me: User; onClose: () => void; onAssign: () => void; onDelete: () => void;
+function OrderDrawer({ order, me, onClose, onShowCode, onAssign, onDelete }: {
+  order: Order; me: User; onClose: () => void; onShowCode: () => void; onAssign: () => void; onDelete: () => void;
 }) {
   const db = useDB();
   const zone = zoneById(order.zoneId);
@@ -267,8 +269,9 @@ function OrderDrawer({ order, me, onClose, onAssign, onDelete }: {
           </ActionRow>
         )}
         {(isHubStaff || isMgr) && order.status === 'assigned' && (
-          <ActionRow title={`مُسند إلى ${courier?.name ?? 'المندوب'} — المندوب سيستلم الشحنة من تطبيقه`}>
+          <ActionRow title={`مُسند إلى ${courier?.name ?? 'المندوب'} — افتح كود التتبع ليمسحه من تطبيقه ويستلم الشحنة`}>
             <div className="flex gap-2">
+              <Btn icon={<QrCode className="w-4 h-4" />} onClick={() => { openCodeForCourier(me, order.id); onShowCode(); }}>فتح كود التتبع للمندوب</Btn>
               {isMgr && <Btn v="ghost" icon={<RefreshCw className="w-4 h-4" />} onClick={onAssign}>تغيير المندوب</Btn>}
             </div>
           </ActionRow>
@@ -398,6 +401,17 @@ function NewOrderModal({ me, onClose }: { me: User; onClose: () => void }) {
           <Badge className="bg-ink text-brand-300 ring-ink"><span className="num" dir="ltr">{previewCode}</span></Badge>
         </div>
       </form>
+    </Modal>
+  );
+}
+
+function ShowCodeModal({ order, onClose }: { order: Order; onClose: () => void }) {
+  return (
+    <Modal open onClose={onClose} title={`كود تتبّع ${order.customer}`} w="max-w-md" icon={<QrCode className="w-5 h-5" />} desc="اعرض هذا الملصق على المندوب ليمسحه من تطبيقه ويستلم الشحنة">
+      <div className="text-center">
+        <div className="bg-white rounded-lg ring-1 ring-slate-200 p-5"><Barcode code={order.code} className="h-16" /></div>
+        <p className="text-xs text-slate-500 mt-3 leading-5">الحالة ستنتقل تلقائيًا إلى «مُسلَّم للمندوب» بمجرد مسحه للكود من تطبيقه.</p>
+      </div>
     </Modal>
   );
 }
