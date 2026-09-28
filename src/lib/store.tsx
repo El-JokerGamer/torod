@@ -534,81 +534,21 @@ export function courierCollected(db: DB, courierId: string) {
   return { orders, amount, allDeliveredAmount: allDelivered.reduce((s, o) => s + o.cod, 0) };
 }
 
-export async function createSettlement(me: User, courierId: string, fees: number, adjustments: { label: string; amount: number }[]) {
+export function createSettlement(me: User, courierId: string, fees: number, adjustments: { label: string; amount: number }[]) {
   if (!can(me, ['owner', 'finance'])) return toast('صلاحية غير كافية', 'error');
   const { orders, amount } = courierCollected(state, courierId);
   if (orders.length === 0 && amount === 0) return toast('لا توجد مبالغ معلقة لهذا المندوب', 'error');
   const adjTotal = adjustments.reduce((s, a) => s + a.amount, 0);
   const net = amount - fees + adjTotal;
   const id = uid();
-  
-  // إنشاء التسوية بحالة 'pending' (معلّق) - لا تعتمد تلقائياً
   mutate((d) => {
     d.settlements.unshift({
       id, courierId, orderIds: orders.map((o) => o.id), base: amount, fees, adjustments, net,
-      status: 'pending', createdAt: Date.now(), by: me.name,
+      status: 'settled', settledAt: Date.now(), createdAt: Date.now(), by: me.name,
     });
-    // لا نربط الطلبات بالتسوية حتى يتم الاعتماد
+    d.orders.forEach((o) => { if (orders.some((x) => x.id === o.id)) o.settlementId = id; });
   });
-  
-  // حفظ التسوية في قاعدة البيانات
-  if (remoteReady) {
-    try {
-      const settlement = state.settlements.find(s => s.id === id);
-      if (settlement) {
-        await upsertRows('settlements', [settlementToRow(settlement as any)]);
-      }
-    } catch (e) {
-      console.error('[taroud] settlement save failed:', e);
-      toast('تم إنشاء التسوية محلياً ولكن تعذر حفظها في قاعدة البيانات', 'warn');
-    }
-  }
-  
-  toast(`تم إنشاء تسوية بقيمة ${money(net)} — بانتظار الاعتماد`);
-}
-
-export async function settleSettlement(me: User, id: string) {
-  if (!can(me, ['owner', 'finance'])) return toast('صلاحية غير كافية', 'error');
-  
-  const settlement = state.settlements.find(s => s.id === id);
-  if (!settlement || settlement.status !== 'pending') {
-    return toast('التسوية غير موجودة أو معتمدة بالفعل', 'error');
-  }
-  
-  // اعتماد التسوية وربط الطلبات
-  mutate((d) => {
-    const s = d.settlements.find((x) => x.id === id);
-    if (s && s.status === 'pending') {
-      s.status = 'settled';
-      s.settledAt = Date.now();
-      // ربط الطلبات بالتسوية المعتمدة
-      d.orders.forEach((o) => {
-        if (s.orderIds.includes(o.id)) {
-          o.settlementId = id;
-        }
-      });
-    }
-  });
-  
-  // حفظ التسوية والطلبات في قاعدة البيانات
-  if (remoteReady) {
-    try {
-      const updatedSettlement = state.settlements.find(s => s.id === id);
-      if (updatedSettlement) {
-        await upsertRows('settlements', [settlementToRow(updatedSettlement as any)]);
-        // تحديث الطلبات المرتبطة
-        const updatedOrders = state.orders.filter(o => settlement.orderIds.includes(o.id));
-        if (updatedOrders.length > 0) {
-          await upsertRows('orders', updatedOrders.map(o => orderToRow(o as any)));
-        }
-      }
-    } catch (e) {
-      console.error('[taroud] settlement approval save failed:', e);
-      toast('تم الاعتماد محلياً ولكن تعذر الحفظ في قاعدة البيانات', 'warn');
-    }
-  }
-  
-  toast(`تم اعتماد التسوية بقيمة ${money(settlement.net)} بنجاح`);
+  toast(`تم إنشاء تسوية بقيمة ${money(net)} بنجاح`);
 }
 
 // ── الاتصال الميداني ──
