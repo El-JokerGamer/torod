@@ -4,7 +4,7 @@ import { initialState, uid, SEED_VERSION, zoneById, money, BASE_OWNER_ID } from 
 import type { DB, User, Role, Order, OrderStatus, Issue, IssueStatus, Priority, IssueType, Settlement } from './data';
 import {
   fetchAll, fetchTable, upsertRows, deleteRows, subscribeTables, MAPS,
-  userToRow, routeToRow, orderToRow, hubToRow, issueToRow, settlementToRow, posToRow, SupaError,
+  userToRow, routeToRow, orderToRow, hubToRow, issueToRow, settlementToRow, SupaError,
 } from './supabase';
 import type { TableKey } from './supabase';
 
@@ -577,55 +577,12 @@ export function toggleOnline(me: User) {
     const u = d.users.find((x) => x.id === me.id);
     if (u) u.online = turningOn;
   });
-  if (turningOn) {
-    const z = state.routes.find((r) => r.courierIds.includes(me.id))?.zoneId;
-    const zz = zoneById(z ?? '');
-    mutate((d) => {
-      d.positions[me.id] = {
-        x: (zz?.x ?? 50) + (Math.random() * 2 - 1), y: (zz?.y ?? 30) + (Math.random() * 2 - 1),
-        tx: zz?.x ?? 48, ty: zz?.y ?? 28, lastAt: Date.now(),
-      };
-    }, { sync: false });
-  }
-  toast(turningOn ? 'أنت متصل الآن — موقعك ظاهر لغرفة العمليات' : 'تم إيقاف الاتصال', turningOn ? 'success' : 'info');
+  toast(turningOn ? 'أنت متصل الآن' : 'تم إيقاف الاتصال', turningOn ? 'success' : 'info');
 }
 
-// ── محرك مواقع المندوبين: تحديث كل 15 ثانية ──
+// ── محرك المواقع (محذوف - تم استبداله بنظام Share Location) ──
 export function startLiveEngine() {
-  const tick = () => {
-    if (!state.users.some((u) => u.role === 'courier' && u.online)) return;
-    mutate((d) => {
-      const now = Date.now();
-      for (const u of d.users) {
-        if (u.role !== 'courier' || !u.online) continue;
-        let p = d.positions[u.id];
-        if (!p) { p = { x: 50, y: 30, tx: 48, ty: 28, lastAt: now }; d.positions[u.id] = p; }
-        const active = d.orders
-          .filter((o) => o.courierId === u.id && ['handed', 'on_way', 'arrived'].includes(o.status))
-          .sort((a, b) => b.updatedAt - a.updatedAt)[0];
-        if (active) { p.tx = active.x; p.ty = active.y; }
-        const dx = p.tx - p.x, dy = p.ty - p.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist < 1.2) {
-          if (!active) { p.tx = 36 + Math.random() * 34; p.ty = 8 + Math.random() * 46; }
-        } else {
-          const step = 1.6 + Math.random() * 1.6;
-          p.x += (dx / dist) * Math.min(dist, step) + (Math.random() - 0.5) * 0.5;
-          p.y += (dy / dist) * Math.min(dist, step) + (Math.random() - 0.5) * 0.5;
-        }
-        p.lastAt = now;
-      }
-    }, { sync: false });
-    if (remoteReady) {
-      const rows = state.users
-        .filter((u) => u.role === 'courier' && u.online && state.positions[u.id])
-        .map((u) => posToRow(u.id, state.positions[u.id]));
-      if (rows.length) upsertRows('positions', rows).catch(() => { /* صامت */ });
-    }
-  };
-  const t = setInterval(tick, 15000);
-  tick();
-  return () => clearInterval(t);
+  return () => {};
 }
 
 export type { DB, User, Order, Issue, Settlement };

@@ -4,7 +4,6 @@ import { useDB, useMe } from '../lib/store';
 import { STATUS_META, money, timeAgo, zoneById } from '../lib/data';
 import type { Order, OrderStatus, User } from '../lib/data';
 import { Stat, Card, StatusBadge, CodeChip, Avatar, LiveDot, Empty } from '../ui/kit';
-import { LiveMap } from '../ui/map';
 
 export function scopedOrders(orders: Order[], me: User): Order[] {
   if (me.role === 'hub') return orders.filter((o) => me.hubIds.includes(o.hubId));
@@ -24,7 +23,6 @@ export default function Dashboard({ goOrders }: { goOrders?: () => void }) {
   const codCollected = orders.filter((o) => o.status === 'delivered').reduce((s, o) => s + o.cod, 0);
   const codPending = orders.filter((o) => ['handed', 'on_way', 'arrived', 'assigned'].includes(o.status)).reduce((s, o) => s + o.cod, 0);
 
-  const mapOrders = orders.filter((o) => !['delivered', 'failed', 'returned'].includes(o.status));
   const pieData = (Object.keys(STATUS_META) as OrderStatus[])
     .map((s) => ({ name: STATUS_META[s].label, value: count(s), hex: STATUS_META[s].hex }))
     .filter((d) => d.value > 0);
@@ -48,14 +46,7 @@ export default function Dashboard({ goOrders }: { goOrders?: () => void }) {
         <Stat label="تحصيل COD" value={money(codCollected)} sub={`معلّق: ${money(codPending)}`} icon={<Banknote className="w-5 h-5" />} tone="brand" />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-4">
-        {/* الخريطة المباشرة */}
-        <Card title="خريطة التشغيل المباشرة" sub="مواقع المندوبين والطلبات النشطة لحظيًا" className="lg:col-span-2" pad={false}>
-          <div className="p-3">
-            <LiveMap db={db} orders={mapOrders} couriers={couriers} className="h-64 sm:h-72 2xl:h-80" />
-          </div>
-        </Card>
-
+      <div className="grid lg:grid-cols-2 gap-4">
         {/* توزيع الحالات */}
         <Card title="توزيع حالات الطلبات" sub="حسب مراحل خط التشغيل" pad={false}>
           <div className="p-2 flex flex-col items-center">

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   LogOut, Power, MapPin, Phone, Navigation, Check, X, Camera, Send, Plus, Flag,
-  ChevronDown, Warehouse, Bike, MessageSquare, Lock,
+  ChevronDown, Warehouse, Bike, MessageSquare, Lock, Share2,
 } from 'lucide-react';
 import {
   useDB, useMe, logout, toggleOnline, courierScanReceive, courierOnWay, courierArrived, courierDeliver,
@@ -10,8 +10,8 @@ import {
 import { STATUS_META, FAIL_REASONS, ISSUE_TYPES, ISSUE_STATUSES, zoneById, money, timeAgo } from '../lib/data';
 import type { Issue, IssueType, Order, Priority, User } from '../lib/data';
 import { Btn, Modal, Field, Input, Select, Textarea, Badge, CodeChip, Empty, AppIcon, PriorityBadge } from '../ui/kit';
-import { LiveMap } from '../ui/map';
 import { PodCapture } from '../ui/camera';
+import { ShareLocationModal } from '../ui/ShareLocation';
 
 type Tab = 'tasks' | 'issues' | 'done';
 
@@ -19,12 +19,12 @@ export default function CourierApp() {
   const db = useDB();
   const me = useMe()!;
   const [tab, setTab] = useState<Tab>('tasks');
-  const [mapOpen, setMapOpen] = useState(true);
   const [receiveFor, setReceiveFor] = useState<Order | null>(null);
   const [deliverFor, setDeliverFor] = useState<Order | null>(null);
   const [failFor, setFailFor] = useState<Order | null>(null);
   const [showIssue, setShowIssue] = useState(false);
   const [chatFor, setChatFor] = useState<string | null>(null);
+  const [showShareLocation, setShowShareLocation] = useState(false);
 
   const toReceive = useMemo(() => db.orders.filter((o) => o.courierId === me.id && o.status === 'assigned'), [db.orders, me.id]);
   const active = useMemo(() => db.orders.filter((o) => o.courierId === me.id && ['handed', 'on_way', 'arrived'].includes(o.status)).sort((a, b) => b.updatedAt - a.updatedAt), [db.orders, me.id]);
@@ -63,6 +63,9 @@ export default function CourierApp() {
             <Btn sm v={me.online ? 'dark' : 'success'} className={me.online ? 'bg-white/10 ring-1 ring-white/15' : ''} icon={<Power className="w-3.5 h-3.5" />} onClick={() => toggleOnline(me)}>
               {me.online ? 'إيقاف' : 'اتصال'}
             </Btn>
+            <button onClick={() => setShowShareLocation(true)} title="مشاركة الموقع" className="p-2 rounded-md bg-white/5 ring-1 ring-white/10 text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10 hover:ring-emerald-500/30 transition-all active:scale-90">
+              <Share2 className="w-4 h-4" />
+            </button>
             <button onClick={() => logout()} title="تسجيل الخروج" className="p-2 rounded-md bg-white/5 ring-1 ring-white/10 text-slate-400 hover:text-red-300 hover:bg-red-500/10 hover:ring-red-500/30 transition-all active:scale-90">
               <LogOut className="w-4 h-4" />
             </button>
@@ -85,16 +88,6 @@ export default function CourierApp() {
                 <div className="text-[9px] font-semibold text-slate-400">{s.label}</div>
               </div>
             ))}
-          </div>
-          <button onClick={() => setMapOpen((v) => !v)} className="w-full flex items-center justify-between text-[11px] font-bold text-slate-300 hover:text-white py-2 transition-colors">
-            <span className="flex items-center gap-2"><MapPin className="w-4 h-4 text-brand-400" />خريطتي المباشرة</span>
-            <span className="flex items-center gap-2">
-              <span className="text-[10px] font-semibold text-slate-400 num">{active.length + toReceive.length} مهمة</span>
-              <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${mapOpen ? 'rotate-180' : ''}`} />
-            </span>
-          </button>
-          <div className={`overflow-hidden transition-all duration-300 ease-[cubic-bezier(.16,1,.3,1)] ${mapOpen ? 'max-h-[340px] mt-2 opacity-100' : 'max-h-0 opacity-0'}`}>
-            <LiveMap db={db} orders={[...toReceive, ...active]} couriers={[me]} compact className="h-[320px]" />
           </div>
         </header>
 
@@ -166,6 +159,7 @@ export default function CourierApp() {
       {deliverFor && <DeliverModal order={deliverFor} me={me} onClose={() => setDeliverFor(null)} />}
       {failFor && <FailModal order={failFor} me={me} onClose={() => setFailFor(null)} />}
       {showIssue && <FieldIssueModal me={me} onClose={() => setShowIssue(false)} />}
+      <ShareLocationModal open={showShareLocation} onClose={() => setShowShareLocation(false)} />
     </div>
   );
 }
