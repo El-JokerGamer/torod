@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import {
   useDB, useMe, logout, toggleOnline, courierScanReceive, courierOnWay, courierArrived, courierDeliver,
-  courierFail, addIssue, chatOnIssue, toast,
+  courierFail, addIssue, chatOnIssue, toast, mutate,
 } from '../lib/store';
 import { STATUS_META, FAIL_REASONS, ISSUE_TYPES, ISSUE_STATUSES, zoneById, money, timeAgo } from '../lib/data';
 import type { Issue, IssueType, Order, Priority, User } from '../lib/data';
@@ -45,55 +45,62 @@ export default function CourierApp() {
       return;
     }
 
-    // الحصول على الموقع الأولي
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
-        setLocationError(null);
-      },
-      (error) => {
-        let errorMsg = 'تعذر تحديد الموقع';
-        if (error.code === error.PERMISSION_DENIED) {
-          errorMsg = 'يرجى السماح بتحديد الموقع من إعدادات المتصفح';
-        } else if (error.code === error.POSITION_UNAVAILABLE) {
-          errorMsg = 'معلومات الموقع غير متاحة';
-        } else if (error.code === error.TIMEOUT) {
-          errorMsg = 'انتهت مهلة طلب الموقع';
-        }
-        setLocationError(errorMsg);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      }
-    );
-
-    // تحديث الموقع كل 30 ثانية
-    const intervalId = setInterval(() => {
+    // دالة لتحديث الموقع
+    const updateLocation = () => {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setLocation({
+          const newLocation = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
-          });
+          };
+          setLocation(newLocation);
+          setLocationError(null);
+          
+          // حفظ الموقع في قاعدة البيانات
+          if (me.online) {
+            // تحويل الإحداثيات إلى نظام الخريطة (0-100)
+            const x = ((newLocation.lng + 180) / 360) * 100;
+            const y = ((90 - newLocation.lat) / 180) * 100;
+            
+            // تحديث الموقع في store
+            mutate((d: any) => {
+              d.positions[me.id] = {
+                x,
+                y,
+                tx: x,
+                ty: y,
+                lastAt: Date.now(),
+              };
+            });
+          }
         },
         (error) => {
-          console.error('خطأ في تحديث الموقع:', error);
+          let errorMsg = 'تعذر تحديد الموقع';
+          if (error.code === error.PERMISSION_DENIED) {
+            errorMsg = 'يرجى السماح بتحديد الموقع من إعدادات المتصفح';
+          } else if (error.code === error.POSITION_UNAVAILABLE) {
+            errorMsg = 'معلومات الموقع غير متاحة';
+          } else if (error.code === error.TIMEOUT) {
+            errorMsg = 'انتهت مهلة طلب الموقع';
+          }
+          setLocationError(errorMsg);
         },
         {
           enableHighAccuracy: true,
           timeout: 10000,
-          maximumAge: 30000,
+          maximumAge: 0,
         }
       );
-    }, 30000);
+    };
+
+    // الحصول على الموقع الأولي
+    updateLocation();
+
+    // تحديث الموقع كل 30 ثانية
+    const intervalId = setInterval(updateLocation, 30000);
 
     return () => clearInterval(intervalId);
-  }, []);
+  }, [me.id, me.online]);
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode; count: number }[] = [
     { key: 'tasks', label: 'مهامي', icon: <Bike className="w-4 h-4" />, count: active.length + toReceive.length },
@@ -133,15 +140,24 @@ export default function CourierApp() {
 
           {/* حالة الموقع */}
           {locationError && (
-            <div className="flex items-center gap-2 text-[11px] font-semibold text-amber-300 bg-amber-500/10 ring-1 ring-amber-500/30 rounded-md px-3 py-2 mb-3 animate-fade-up">
-              <MapPin className="w-4 h-4 shrink-0" />
-              {locationError}
+            <div className="flex items-center gap-3 text-sm font-semibold text-amber-200 bg-gradient-to-r from-amber-500/20 to-amber-600/20 ring-2 ring-amber-500/40 rounded-xl px-4 py-3 mb-3 animate-fade-up">
+              <MapPin className="w-5 h-5 shrink-0 animate-pulse" />
+              <div>
+                <div className="font-bold">{locationError}</div>
+                <div className="text-xs text-amber-300 mt-0.5">يرجى السماح بتحديد الموقع من إعدادات المتصفح</div>
+              </div>
             </div>
           )}
           {location && !locationError && (
-            <div className="flex items-center gap-2 text-[11px] font-semibold text-emerald-300 bg-emerald-500/10 ring-1 ring-emerald-500/30 rounded-md px-3 py-2 mb-3 animate-fade-up">
-              <MapPin className="w-4 h-4 shrink-0" />
-              موقعك يُشارك تلقائياً مع الإدارة
+            <div className="flex items-center gap-3 text-sm font-semibold text-emerald-200 bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 ring-2 ring-emerald-500/40 rounded-xl px-4 py-3 mb-3 animate-fade-up">
+              <div className="relative">
+                <MapPin className="w-5 h-5 shrink-0" />
+                <span className="absolute -top-1 -end-1 w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+              </div>
+              <div>
+                <div className="font-bold">📍 موقعك يُشارك تلقائياً مع الإدارة</div>
+                <div className="text-xs text-emerald-300 mt-0.5">يتم التحديث كل 30 ثانية</div>
+              </div>
             </div>
           )}
 

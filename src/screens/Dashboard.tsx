@@ -112,7 +112,12 @@ export default function Dashboard({ goOrders }: { goOrders?: () => void }) {
         </Card>
 
         {/* المندوبون */}
-        <Card title="المندوبون الآن" sub="الإشارة اللحظية من الميدان" pad={false}>
+        <Card 
+          title="🚴 المندوبون الآن" 
+          sub="تتبع مباشر لمواقع المندوبين - اضغط على 'عرض الموقع' لفتح خرائط جوجل" 
+          pad={false}
+          className="border-2 border-emerald-200"
+        >
           {couriers.length === 0 ? (
             <Empty icon={<Bike className="w-8 h-8" strokeWidth={1.4} />} title="لا يوجد مندوبون" sub="أضف مندوبين من شاشة إدارة الفريق ليظهروا هنا" />
           ) : (
@@ -129,36 +134,46 @@ export default function Dashboard({ goOrders }: { goOrders?: () => void }) {
                   : null;
                 
                 return (
-                  <div key={c.id} className="flex items-center gap-2.5 px-4 py-2.5">
-                    <span className="relative">
-                      <Avatar id={c.id} name={c.name} />
-                      <span className={`absolute -bottom-0.5 -end-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white ${c.online ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-bold text-slate-800 truncate">{c.name}</span>
-                      <span className="block text-[11px] text-slate-500 truncate">{route?.name ?? 'بدون مسار'}</span>
-                    </span>
-                    {c.online ? (
-                      <div className="flex items-center gap-2">
-                        <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
-                          <LiveDot /> {active} نشط
-                        </span>
-                        {mapsUrl && (
-                          <a 
-                            href={mapsUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-[10px] font-bold text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 ring-1 ring-brand-200 rounded-md px-2 py-1 transition-colors"
-                            title="عرض الموقع على الخريطة"
-                          >
-                            <MapPin className="w-3 h-3" />
-                            عرض الموقع
-                          </a>
+                  <div key={c.id} className={`px-4 py-3 ${c.online ? 'bg-emerald-50/30' : 'bg-slate-50/30'}`}>
+                    <div className="flex items-center gap-3">
+                      <span className="relative">
+                        <Avatar id={c.id} name={c.name} size="w-12 h-12" />
+                        <span className={`absolute -bottom-0.5 -end-0.5 w-3 h-3 rounded-full ring-2 ring-white ${c.online ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base font-bold text-slate-800 truncate">{c.name}</span>
+                          {c.online && <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">متصل</span>}
+                        </div>
+                        <div className="text-xs text-slate-500 mt-0.5">
+                          {route?.name ?? 'بدون مسار'} • {active} طلب نشط
+                        </div>
+                        {c.online && hasLocation && (
+                          <div className="text-[10px] text-emerald-600 mt-1 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            آخر تحديث: {timeAgo(p.lastAt)}
+                          </div>
                         )}
                       </div>
-                    ) : (
-                      <span className="text-[10px] font-semibold text-slate-400">غير متصل</span>
-                    )}
+                      {c.online && mapsUrl && (
+                        <a 
+                          href={mapsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-700 hover:to-brand-800 text-white font-bold text-sm px-4 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+                          title="عرض الموقع المباشر على خرائط جوجل"
+                        >
+                          <MapPin className="w-5 h-5" />
+                          <span>عرض الموقع</span>
+                        </a>
+                      )}
+                      {!c.online && (
+                        <span className="text-xs font-semibold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-lg">غير متصل</span>
+                      )}
+                      {c.online && !hasLocation && (
+                        <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg">بانتظار الموقع...</span>
+                      )}
+                    </div>
                   </div>
                 );
               })}
